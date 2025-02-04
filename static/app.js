@@ -453,7 +453,7 @@ function ConnectWebSocket() {
             messageItem.classList.add('message-item');
             messageItem.textContent = `${data.sender} [${data.time}]: ${data.message}`;
             messageList.appendChild(messageItem);
-            console.log(`${data.sender} : ${data.message}`)
+            console.log(`this is the received data on message : ${data.sender} : ${data.message}`)
     };
     return ws
 }
@@ -466,7 +466,7 @@ function fetchActiveUsers() {
         .then(users => {
             const userList = document.getElementById('userList');
             userList.innerHTML = '';
-            console.log("users fetched", users)
+            console.log("active users :", users)
             users.forEach(user => {
                 const userItem = document.createElement('li');
                 userItem.classList.add('user-item');
@@ -474,7 +474,7 @@ function fetchActiveUsers() {
 
                 userItem.addEventListener('click', () => {
                      selectedUser = user;
-                     loadChatWithUser();
+                     loadChatWithUser(selectedUser);
                     document.getElementById('messageBox').style.display = 'block';
                     document.getElementById('selectedUserName').textContent = selectedUser;
                 });
@@ -508,23 +508,30 @@ function sendPrivateMessage() {
 async function fetchMessages(sender, receiver) {
     try {
         const response = await fetch(`/private-messages?sender=${sender}&receiver=${receiver}`);
-        const messages = await response.json();
-        
-        console.log("Messages:", messages);
+        console.log(sender , receiver , "when geting the messages")
+        let messages = await response.json();
+
+        if (!Array.isArray(messages)) {
+            messages = [];
+            console.log("not array")
+        }
 
         const messageList = document.getElementById("messageList");
         messageList.innerHTML = "";
 
         messages.forEach(msg => {
+            console.log("Stored message:", msg);
             const messageElement = document.createElement("li");
             messageElement.textContent = `${msg.sender}: ${msg.message}`;
             messageList.appendChild(messageElement);
         });
+
         messageList.style.display = 'block';
     } catch (error) {
         console.error("Error fetching messages:", error);
     }
 }
+
 
 function loadChatWithUser(receiver) {
     const sender = currentUsername; 
