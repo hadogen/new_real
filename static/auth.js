@@ -1,3 +1,6 @@
+import { ShowSection } from "./utils.js";
+import { ConnectWebSocket, fetchActiveUsers, ws } from "./websocket.js";
+
 let currentUser = null;
 let currentUsername = null;
 

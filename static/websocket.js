@@ -1,6 +1,7 @@
 import { currentUsername } from './auth.js';
 
 let ws = null;
+export {ws}
 
 export function ConnectWebSocket() {
     ws = new WebSocket("ws://localhost:8080/ws"); 

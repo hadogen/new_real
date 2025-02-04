@@ -5,6 +5,7 @@ import { fetchActiveUsers as fetchActiveUsersImpl } from './websocket.js';
 window.ShowSection = ShowSection;
 window.ConnectWebSocket = connectWebSocketImpl;
 window.fetchActiveUsers = fetchActiveUsersImpl;
+
  console.log("app.js loaded");
 
 import './posts.js';
