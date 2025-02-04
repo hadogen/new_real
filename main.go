@@ -17,7 +17,6 @@ var upgrader = websocket.Upgrader{
 }
 
 // WebSocket connection handler
-var clients = make(map[string]*websocket.Conn) // Map to store connected clients
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
     conn, err := upgrader.Upgrade(w, r, nil)
@@ -27,31 +26,37 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
     }
     defer conn.Close()
 
-    // Read the user ID from the query parameters or headers
     userID := r.URL.Query().Get("user_id")
     if userID == "" {
         log.Println("User ID is required")
         return
     }
 
-    // Add the client to the map
-    clients[userID] = conn
-    log.Println("User connected:", userID)
+    var username string
+    err = database.Db.QueryRow("SELECT nickname FROM users WHERE id = ?", userID).Scan(&username)
+    if err != nil {
+        log.Println("Failed to fetch username:", err)
+        return
+    }
+
+    handlers.Clients[userID] = conn // Store WebSocket connection
+    log.Println("User connected:", username)
 
     for {
         var msg struct {
-            SenderID   string `json:"sender_id"`
-            ReceiverID string `json:"receiver_id"`
-            Content    string `json:"content"`
+            SenderID       string `json:"sender_id"`
+            SenderUsername string `json:"senderUsername"`
+            ReceiverID     string `json:"receiver_id"`
+            Content        string `json:"content"`
         }
         err := conn.ReadJSON(&msg)
         if err != nil {
             log.Println("WebSocket read error:", err)
-            delete(clients, userID) // Remove the client if there's an error
+            delete(handlers.Clients, userID) // Remove user if disconnected
             break
         }
 
-        // Save the message to the database
+        // Save message to database
         msgID := uuid.New().String()
         _, err = database.Db.Exec(`
             INSERT INTO private_messages (id, sender_id, receiver_id, content)
@@ -62,8 +67,8 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
             continue
         }
 
-        // Broadcast the message to the receiver
-        if receiverConn, ok := clients[msg.ReceiverID]; ok {
+        // Send message to the receiver if online
+        if receiverConn, ok := handlers.Clients[msg.ReceiverID]; ok {
             err := receiverConn.WriteJSON(msg)
             if err != nil {
                 log.Println("Failed to send message to receiver:", err)

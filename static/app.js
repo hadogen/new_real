@@ -445,94 +445,121 @@ async function FilterByLikedPosts() {
 
 ShowSection("register");
 
+// Improved JavaScript Code
 
+let socket = null;
 
-let socket;
+// Function to get cookies
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
 
+// Function to check if the user is logged in
+function IsLoggedIn() {
+    return currentUser !== null;
+}
 
+// Function to initialize user session from cookies
+function InitSession() {
+    currentUser = getCookie("user_id");
+    currentUsername = getCookie("username");
+    
+    if (IsLoggedIn()) {
+        ConnectWebSocket();
+        LoadActiveUsers();
+        document.getElementById("privateMessagingSection").style.display = "block";
+        document.getElementById("postsSection").style.display = "block";
+    } else {
+        document.getElementById("privateMessagingSection").style.display = "none";
+        document.getElementById("postsSection").style.display = "none";
+    }
+}
+
+// Function to show sections only if logged in
+function ShowSection(sectionId) {
+    if (!IsLoggedIn()) {
+        alert("You must be logged in to access this section.");
+        return;
+    }
+    document.querySelectorAll(".section").forEach((section) => {
+        section.classList.remove("active");
+    });
+    document.getElementById(sectionId).classList.add("active");
+    if (sectionId === "posts") LoadPosts();
+}
 
 // Connect to WebSocket
 function ConnectWebSocket() {
+    if (socket) socket.close();
     socket = new WebSocket(`ws://localhost:8080/ws?user_id=${currentUser}`);
-
-    socket.onopen = function () {
-        console.log("WebSocket connection established");
-    };
-
-    socket.onmessage = function (event) {
-        const message = JSON.parse(event.data);
-        DisplayMessage(message);
-    };
-
-    socket.onclose = function () {
-        console.log("WebSocket connection closed");
-    };
+    
+    socket.onopen = () => console.log("WebSocket connected");
+    socket.onmessage = (event) => DisplayMessage(JSON.parse(event.data));
+    socket.onclose = () => console.log("WebSocket disconnected");
 }
 
-// Display a message in the chat history
+// Display message in chat history
 function DisplayMessage(message) {
+    if (message.receiver_id !== currentUser) return;
     const chatHistory = document.getElementById("chatHistory");
     const messageElement = document.createElement("div");
-    messageElement.innerHTML = `
-        <p><strong>${message.sender_id}</strong> (${new Date().toLocaleString()}): ${message.content}</p>
-    `;
+    messageElement.innerHTML = `<p><strong>${message.senderUsername}</strong>: ${message.content}</p>`;
     chatHistory.appendChild(messageElement);
-    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the bottom
+    chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
-// Send a message
-document.getElementById("sendMessageForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-
-    const receiverId = document.getElementById("receiverId").value;
-    const content = document.getElementById("messageContent").value;
-
-    if (!receiverId || !content) {
-        alert("Please select a user and enter a message.");
-        return;
+// Load active users
+async function LoadActiveUsers() {
+    try {
+        const response = await fetch("/online-users");
+        const users = await response.json();
+        if (!response.ok) throw new Error(users.error || "Failed to load users");
+        const userList = document.getElementById("activeUsers");
+        userList.innerHTML = users.map(user => `<li onclick="ShowChat('${user.id}', '${user.username}')">${user.username}</li>`).join("");
+    } catch (error) {
+        console.error("Error loading users:", error);
     }
+}
 
-    const message = {
-        sender_id: currentUser,
-        receiver_id: receiverId,
-        content: content,
-    };
-
-    socket.send(JSON.stringify(message));
-    document.getElementById("messageContent").value = ""; // Clear the input
-});
+// Show chat with a user
+function ShowChat(userId, username) {
+    document.getElementById("receiverId").value = userId;
+    document.getElementById("chatHeader").textContent = `Chat with ${username}`;
+    LoadChatHistory(userId);
+    ShowSection("chat");
+}
 
 // Load chat history
 async function LoadChatHistory(receiverId) {
     try {
         const response = await fetch(`/private-messages?sender_id=${currentUser}&receiver_id=${receiverId}`);
         const messages = await response.json();
-        if (!response.ok) {
-            throw new Error(messages.error || "Failed to load messages");
-        }
-
+        if (!response.ok) throw new Error(messages.error || "Failed to load messages");
         const chatHistory = document.getElementById("chatHistory");
-        chatHistory.innerHTML = messages
-            .map(
-                (msg) => `
-                <div>
-                    <p><strong>${msg.sender_id}</strong> (${new Date(msg.created_at).toLocaleString()}): ${msg.content}</p>
-                </div>
-            `
-            )
-            .join("");
-        chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the bottom
+        chatHistory.innerHTML = messages.map(msg => `<div><p><strong>${msg.senderUsername}</strong>: ${msg.content}</p></div>`).join("");
+        chatHistory.scrollTop = chatHistory.scrollHeight;
     } catch (error) {
         console.error("Error loading chat history:", error);
     }
 }
 
-// Show chat with a user
-function ShowChat(userId) {
-    document.getElementById("receiverId").value = userId;
-    LoadChatHistory(userId);
-    ShowSection("chat");
+// Send a message
+async function SendMessage(event) {
+    event.preventDefault();
+    if (!IsLoggedIn()) {
+        alert("You must be logged in to send messages.");
+        return;
+    }
+    const receiverId = document.getElementById("receiverId").value;
+    const content = document.getElementById("messageContent").value;
+    if (!receiverId || !content) return alert("Please select a user and enter a message.");
+    socket.send(JSON.stringify({ sender_id: currentUser, senderUsername: currentUsername, receiver_id: receiverId, content }));
+    document.getElementById("messageContent").value = "";
 }
 
-// Initialize WebSocket connection
-ConnectWebSocket();
+document.getElementById("sendMessageForm").addEventListener("submit", SendMessage);
+
+InitSession();
