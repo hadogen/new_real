@@ -1,103 +1,142 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	database "main/Database"
-	handlers "main/handlers"
+	"main/handlers"
 	"net/http"
+	"sync"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
+type online struct {
+	clients map[string]*websocket.Conn
+	mutex   sync.Mutex
+}
+
+var onlineConnections = online{
+	clients: make(map[string]*websocket.Conn),
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all connections
+		return true
 	},
 }
 
-// WebSocket connection handler
-
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-    conn, err := upgrader.Upgrade(w, r, nil)
-    if err != nil {
-        log.Println("WebSocket upgrade failed:", err)
-        return
-    }
-    defer conn.Close()
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Error upgrading connection:", err)
+		return
+	}
+	defer conn.Close()
 
-    userID := r.URL.Query().Get("user_id")
-    if userID == "" {
-        log.Println("User ID is required")
-        return
-    }
+	session, err := r.Cookie("session")
+	if err != nil {
+		log.Println("Error getting session cookie:", err)
+		return
+	}
+	username, err := database.GetUsernameFromSession(session.Value)
 
-    var username string
-    err = database.Db.QueryRow("SELECT nickname FROM users WHERE id = ?", userID).Scan(&username)
-    if err != nil {
-        log.Println("Failed to fetch username:", err)
-        return
-    }
+	fmt.Println("Username:", username)
+	if err != nil {
+		fmt.Println("Error getting username from session:", err)
+		return
+	}
 
-    handlers.Clients[userID] = conn // Store WebSocket connection
-    log.Println("User connected:", username)
+	onlineConnections.mutex.Lock()
+	onlineConnections.clients[username] = conn
+    fmt.Println("the username that would get stored in the onlineConnections", username)
+	onlineConnections.mutex.Unlock()
 
-    for {
-        var msg struct {
-            SenderID       string `json:"sender_id"`
-            SenderUsername string `json:"senderUsername"`
-            ReceiverID     string `json:"receiver_id"`
-            Content        string `json:"content"`
-        }
-        err := conn.ReadJSON(&msg)
+	for {
+		_, msg, err := conn.ReadMessage()
         if err != nil {
-            log.Println("WebSocket read error:", err)
-            delete(handlers.Clients, userID) // Remove user if disconnected
-            break
-        }
+			log.Println("Error reading message:", err)
+			break
+		}
 
-        // Save message to database
-        msgID := uuid.New().String()
-        _, err = database.Db.Exec(`
-            INSERT INTO private_messages (id, sender_id, receiver_id, content)
-            VALUES (?, ?, ?, ?)
-        `, msgID, msg.SenderID, msg.ReceiverID, msg.Content)
+        var messageData struct {
+            Type     string `json:"type"`
+            Username string `json:"username"`
+            Message  string `json:"message"`
+            Receiver string `json:"receiver"`
+            Time     string `json:"time"`
+        }
+        err = json.Unmarshal(msg, &messageData)
         if err != nil {
-            log.Println("Failed to save message:", err)
+            log.Println("Error unmarshalling message:", err)
             continue
         }
 
-        // Send message to receiver if online
-        if receiverConn, ok := handlers.Clients[msg.ReceiverID]; ok {
-            err := receiverConn.WriteJSON(msg)
-            if err != nil {
-                log.Println("Failed to send message to receiver:", err)
+        _, err = database.Db.Exec(`
+            INSERT INTO private_messages (sender, receiver, message, created_at)
+            VALUES (?, ?, ?, ?)
+        `, messageData.Username, messageData.Receiver, messageData.Message, messageData.Time)
+
+        if err != nil {
+			log.Println("Error inserting message into the database:", err)
+			break
+		}
+
+		log.Printf("Received message from %s to %s: %s", messageData.Username, messageData.Receiver, messageData.Message)
+
+        onlineConnections.mutex.Lock()
+        receiverConn, ok := onlineConnections.clients[messageData.Receiver]
+        onlineConnections.mutex.Unlock()
+
+        if ok {
+            responseMessage := map[string]string{
+                "type":    "private",
+                "sender":  messageData.Username,
+                "message": messageData.Message,
+                "time":    messageData.Time,
             }
+
+            responseMessageJSON, err := json.Marshal(responseMessage)
+            if err != nil {
+                log.Println("Error marshalling response message:", err)
+                continue
+            }
+
+            err = receiverConn.WriteMessage(websocket.TextMessage, responseMessageJSON)
+            if err != nil {
+                log.Println("Error sending message to receiver:", err)
+            }
+        } else {
+            log.Printf("Receiver %s is not online", messageData.Receiver)
         }
-    }
+	}
 }
 
-// Broadcast a message to the receiver
-func BroadcastUserStatus(userID string, online bool) {
-    for _, conn := range handlers.Clients {
-        conn.WriteJSON(map[string]interface{}{
-            "type": "user_status",
-            "user": map[string]interface{}{
-                "id":     userID,
-                "online": online,
-            },
-        })
-    }
+
+
+func GetActiveUsers(w http.ResponseWriter, r *http.Request) {
+	onlineConnections.mutex.Lock()
+	defer onlineConnections.mutex.Unlock()
+	var activeUsers []string
+	for username := range onlineConnections.clients {
+		activeUsers = append(activeUsers, username)
+        fmt.Println("Active users:", activeUsers)
+        fmt.Println(len(onlineConnections.clients))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(activeUsers)
 }
+
 func main() {
-	// Initialize the database
 	db, err := database.InitDB()
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
-	// Register HTTP handlers
 	http.HandleFunc("/register", handlers.RegisterHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)
 	http.HandleFunc("/posts", handlers.GetPostsHandler)
@@ -106,20 +145,14 @@ func main() {
 	http.HandleFunc("/posts/category", handlers.GetPostsByCategoryHandler)
 	http.HandleFunc("/posts/created", handlers.GetPostsByUserHandler)
 	http.HandleFunc("/posts/liked", handlers.GetLikedPostsHandler)
-	http.HandleFunc("/posts/dislike", handlers.DislikePostHandler)
-	http.HandleFunc("/comments/create", handlers.CreateCommentHandler)
-	http.HandleFunc("/comments", handlers.GetCommentsHandler)
-	http.HandleFunc("/comments/like", handlers.LikeCommentHandler)
-	http.HandleFunc("/comments/dislike", handlers.DislikeCommentHandler)
+	http.HandleFunc("/posts/dislike", handlers.DislikeCommentHandler)
 	http.HandleFunc("/private-messages", handlers.GetPrivateMessagesHandler)
-	http.HandleFunc("/online-users", handlers.GetOnlineUsersHandler)
+	http.HandleFunc("/online-users", GetActiveUsers)
 	http.HandleFunc("/ws", HandleWebSocket)
 
-	// Serve static files (frontend)
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/", fs)
 
-	// Start the server
 	log.Println("Server started on localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

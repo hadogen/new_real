@@ -17,7 +17,7 @@ func InitDB() (*sql.DB, error) {
 		log.Fatal(err)
 		return nil, err
 	}
-	// Create tables
+
 	err = createTables(Db)
 	if err != nil {
 		log.Fatal(err)
@@ -44,7 +44,6 @@ func createTables(db *sql.DB) error {
 		return fmt.Errorf("failed to create users table: %v", err)
 	}
 
-	// Create comments table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comments (
 		id TEXT PRIMARY KEY,
 		post_id TEXT,
@@ -80,16 +79,12 @@ func createTables(db *sql.DB) error {
 		return fmt.Errorf("failed to create comment_dislikes table: %v", err)
 	}
 
-	// Create messages table
 	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS private_messages (
-    id TEXT PRIMARY KEY,
-    sender_id TEXT,
-    receiver_id TEXT,
-    content TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_id) REFERENCES users(id),
-    FOREIGN KEY (receiver_id) REFERENCES users(id)
+		sender TEXT,
+    	receiver TEXT,
+    	message TEXT,
+    	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 	`)
 	if err != nil {
@@ -98,7 +93,7 @@ func createTables(db *sql.DB) error {
 	}
 	_, err = db.Exec(
 		`CREATE TABLE IF NOT EXISTS posts (
-    id TEXT PRIMARY KEY,
+   			id TEXT PRIMARY KEY,
     user_id TEXT,
     username TEXT,
     title TEXT,
@@ -135,5 +130,27 @@ func createTables(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to create post_dislikes table: %v", err)
 	}
+	_,err = db.Exec(`CREATE TABLE IF NOT EXISTS sessions (
+		id integer PRIMARY KEY autoincrement,
+		nickname TEXT,
+		session TEXT,
+		FOREIGN KEY (nickname) REFERENCES users(nickname)
+	);`)
+	if err != nil {
+		return fmt.Errorf("failed to create sessions table: %v", err)
+	}
 	return nil
+}
+
+
+func GetUsernameFromSession(session string) (string, error) {
+	var username string
+	err := Db.QueryRow(`
+		SELECT nickname FROM sessions
+		WHERE session = ?
+	`, session).Scan(&username)
+	if err != nil {
+		return "", err
+	}
+	return username, nil
 }

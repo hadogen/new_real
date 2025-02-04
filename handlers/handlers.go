@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -97,7 +96,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(map[string]string{"error": "User not found"})
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch user"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "wrong"})
 		}
 		return
 	}
@@ -109,12 +108,33 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid password"})
 		return
 	}
-	// session := uuid.New().String()
-	// http.SetCookie(w, &http.Cookie{
-	//     Name:  "session",
-	//     Value: session,
-	//     Expires: time.Now().Add(24 * time.Hour),
-	// })
+	session := uuid.New().String()
+	http.SetCookie(w, &http.Cookie{
+		Name:    "session",
+		Value:   session,
+		Expires: time.Now().Add(24 * time.Hour),
+		Path:    "/",
+	})
+	_, err = database.Db.Exec(`
+	DELETE FROM sessions WHERE nickname = ?
+	`,user.Nickname)
+	if err != nil {	
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete session"})
+		fmt.Println("failed to delete session")
+		return
+	}
+
+	_, err = database.Db.Exec(`
+		INSERT INTO sessions (session, nickname)
+		VALUES (?, ?)
+	`, session, user.Nickname)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create session"})
+		fmt.Println("failed to create session")
+		return
+	}
 	// Set session cookies
 	http.SetCookie(w, &http.Cookie{
 		Name:  "user_id",
@@ -772,88 +792,56 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(posts)
 }
 
-var Clients = make(map[string]*websocket.Conn) // Map to store connected clients
-
-func GetOnlineUsersHandler(w http.ResponseWriter, r *http.Request) {
-    var users []struct {
-        ID       string `json:"id"`
-        Username string `json:"username"`
-        Online   bool   `json:"online"`
-    }
-
-    for userID, conn := range Clients { // `Clients` map from main.go
-        if conn != nil {
-            var username string
-            err := database.Db.QueryRow("SELECT nickname FROM users WHERE id = ?", userID).Scan(&username)
-            if err == nil {
-                users = append(users, struct {
-                    ID       string `json:"id"`
-                    Username string `json:"username"`
-                    Online   bool   `json:"online"`
-                }{
-                    ID:       userID,
-                    Username: username,
-                    Online:   true, // Mark as online
-                })
-            }
-        }
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(users)
-}
 
 func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
-    senderID := r.URL.Query().Get("sender_id")
-    receiverID := r.URL.Query().Get("receiver_id")
-    if senderID == "" || receiverID == "" {
-        w.WriteHeader(http.StatusBadRequest)
-        json.NewEncoder(w).Encode(map[string]string{"error": "Sender ID and Receiver ID are required"})
-        return
-    }
+	sender := r.URL.Query().Get("sender")
+	receiver := r.URL.Query().Get("receiver")
+	if sender == "" || receiver == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Sender and Receiver are required"})
+		return
+	}
 
-    rows, err := database.Db.Query(`
-        SELECT pm.id, pm.sender_id, u.nickname AS senderUsername, pm.receiver_id, pm.content, pm.created_at
-        FROM private_messages pm
-        JOIN users u ON pm.sender_id = u.id
-        WHERE (pm.sender_id = ? AND pm.receiver_id = ?) OR (pm.sender_id = ? AND pm.receiver_id = ?)
-        ORDER BY pm.created_at DESC
+	rows, err := database.Db.Query(`
+        SELECT id, sender, receiver, message, created_at
+        FROM private_messages
+        WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)
+        ORDER BY created_at DESC
         LIMIT 10
-    `, senderID, receiverID, receiverID, senderID)
-    if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch messages: " + err.Error()})
-        return
-    }
-    defer rows.Close()
+    `, sender, receiver, receiver, sender)
 
-    var messages []struct {
-        ID             string `json:"id"`
-        SenderID       string `json:"sender_id"`
-        SenderUsername string `json:"senderUsername"`
-        ReceiverID     string `json:"receiver_id"`
-        Content        string `json:"content"`
-        CreatedAt      string `json:"created_at"`
-    }
-    for rows.Next() {
-        var msg struct {
-            ID             string `json:"id"`
-            SenderID       string `json:"sender_id"`
-            SenderUsername string `json:"senderUsername"`
-            ReceiverID     string `json:"receiver_id"`
-            Content        string `json:"content"`
-            CreatedAt      string `json:"created_at"`
-        }
-        err := rows.Scan(&msg.ID, &msg.SenderID, &msg.SenderUsername, &msg.ReceiverID, &msg.Content, &msg.CreatedAt)
-        if err != nil {
-            w.WriteHeader(http.StatusInternalServerError)
-            json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan message: " + err.Error()})
-            return
-        }
-        messages = append(messages, msg)
-    }
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println("no sender or receiver selected")
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch messages: " + err.Error()})
+		return
+	}
+	defer rows.Close()
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(messages)
+
+	var messages []struct {
+		Sender    string `json:"sender"`
+		Receiver  string `json:"receiver"`
+		Message   string `json:"message"`
+		CreatedAt string `json:"created_at"`
+	}
+	for rows.Next() {
+		var msg struct {
+			Sender    string `json:"sender"`
+			Receiver  string `json:"receiver"`
+			Message   string `json:"message"`
+			CreatedAt string `json:"created_at"`
+		}
+		err := rows.Scan( &msg.Sender, &msg.Receiver, &msg.Message, &msg.CreatedAt)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan message: " + err.Error()})
+			return
+		}
+		messages = append(messages, msg)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(messages)
 }

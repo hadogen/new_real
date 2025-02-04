@@ -7,12 +7,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="currentUser"></div>
     <div id="app">
         <!-- Navigation -->
         <nav>
             <button onclick="ShowSection('register')">Register</button>
             <button onclick="ShowSection('login')">Login</button>
-            <button onclick="ShowSection('posts')">Posts</button>
+            <button onclick="LoadPosts()">Load</button>
         </nav>
 
         <!-- Register Section -->
@@ -91,22 +92,16 @@
         <!-- Message Display -->
         <p id="message"></p>
     </div>
-    <section id="privateMessagingSection" class="section">
-        <div id="activeUsers">
-            <h2>Active Users</h2>
-            <ul id="userList"></ul>
-        </div>
-        
-        <div id="chatSection" class="section">
-            <div id="chatHeader"></div>
-            <div id="chatHistory"></div>
-            <form id="sendMessageForm">
-                <input type="hidden" id="receiverId">
-                <input type="text" id="messageContent" required>
-                <button type="submit">Send</button>
-            </form>
-        </div>
-    </section>
+    <h2>Active Users</h2>
+    <ul id="userList" class="user-list"></ul>
+
+    <div id="messageBox">
+        <h3>Send a private message</h3>
+        <h4 id="selectedUserName"></h4>
+        <ul id = "messageList"></ul>
+        <input type="text" id="messageInput" placeholder="Type your message" />
+        <button onclick="sendPrivateMessage()">Send</button>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>
