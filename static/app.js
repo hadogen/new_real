@@ -1,26 +1,6 @@
 let currentUser = null;
 let currentUsername = null;
 
-// Function to show/hide sections
-function ShowSection(sectionId) {
-    document.querySelectorAll(".section").forEach((section) => {
-        section.classList.remove("active");
-    });
-
-    // Show the selected section
-    document.getElementById(sectionId).classList.add("active");
-
-    // Load posts when the posts section is shown
-    if (sectionId === "posts") {
-        if (!currentUser) {
-            document.getElementById("message").textContent = "You must be logged in to view posts.";
-            ShowSection("login");
-        } else {
-            LoadPosts();
-        }
-    }
-}
-
 // Register form submission
 document.getElementById("registerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -445,9 +425,13 @@ async function FilterByLikedPosts() {
 
 ShowSection("register");
 
+
+
 // Improved JavaScript Code
+// Global variables
 
 let socket = null;
+const RECONNECT_DELAY = 3000; // Reconnect delay in milliseconds
 
 // Function to get cookies
 function getCookie(name) {
@@ -462,51 +446,91 @@ function IsLoggedIn() {
     return currentUser !== null;
 }
 
-// Function to initialize user session from cookies
+// Initialize session from cookies
 function InitSession() {
     currentUser = getCookie("user_id");
     currentUsername = getCookie("username");
-    
+
     if (IsLoggedIn()) {
         ConnectWebSocket();
         LoadActiveUsers();
-        document.getElementById("privateMessagingSection").style.display = "block";
-        document.getElementById("postsSection").style.display = "block";
+        ShowSection("posts");
     } else {
-        document.getElementById("privateMessagingSection").style.display = "none";
-        document.getElementById("postsSection").style.display = "none";
+        ShowSection("login");
     }
 }
 
-// Function to show sections only if logged in
+// Show/hide sections
 function ShowSection(sectionId) {
-    if (!IsLoggedIn()) {
+    if (!IsLoggedIn() && sectionId !== "login" && sectionId !== "register") {
         alert("You must be logged in to access this section.");
+        ShowSection("login");
         return;
     }
+
     document.querySelectorAll(".section").forEach((section) => {
         section.classList.remove("active");
     });
+
     document.getElementById(sectionId).classList.add("active");
-    if (sectionId === "posts") LoadPosts();
+
+    // Load posts when the posts section is shown
+    if (sectionId === "posts") {
+        LoadPosts();
+    }
 }
 
 // Connect to WebSocket
 function ConnectWebSocket() {
     if (socket) socket.close();
-    socket = new WebSocket(`ws://localhost:8080/ws?user_id=${currentUser}`);
-    
-    socket.onopen = () => console.log("WebSocket connected");
-    socket.onmessage = (event) => DisplayMessage(JSON.parse(event.data));
-    socket.onclose = () => console.log("WebSocket disconnected");
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    socket = new WebSocket(`${wsProtocol}${window.location.host}/ws?user_id=${currentUser}`);
+
+    socket.onopen = () => {
+        console.log("WebSocket connected");
+        LoadActiveUsers();
+    };
+
+    socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === "error") {
+            ShowError(message.content);
+        } else if (message.type === "private_message") {
+            DisplayMessage(message);
+        } else if (message.type === "user_status") {
+            UpdateUserList(message.users);
+        }
+    };
+
+    socket.onclose = (event) => {
+        console.log(`WebSocket closed: ${event.reason}`);
+        setTimeout(ConnectWebSocket, RECONNECT_DELAY);
+    };
+
+    socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        socket.close();
+    };
 }
 
-// Display message in chat history
+// Display a message in the chat history
 function DisplayMessage(message) {
-    if (message.receiver_id !== currentUser) return;
     const chatHistory = document.getElementById("chatHistory");
+    const isOutgoing = message.sender_id === currentUser;
+
     const messageElement = document.createElement("div");
-    messageElement.innerHTML = `<p><strong>${message.senderUsername}</strong>: ${message.content}</p>`;
+    messageElement.className = `message ${isOutgoing ? 'outgoing' : 'incoming'} ${message.status || ''}`;
+    messageElement.innerHTML = `
+        <div class="message-meta">
+            <span class="username">${message.senderUsername}</span>
+            <span class="timestamp">${new Date(message.timestamp).toLocaleTimeString()}</span>
+            ${message.status === 'pending' ? '<span class="status">🕒</span>' : ''}
+            ${message.status === 'delivered' ? '<span class="status">✓</span>' : ''}
+        </div>
+        <div class="message-content">${message.content}</div>
+    `;
+
     chatHistory.appendChild(messageElement);
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
@@ -515,51 +539,162 @@ function DisplayMessage(message) {
 async function LoadActiveUsers() {
     try {
         const response = await fetch("/online-users");
+        if (!response.ok) {
+            throw new Error(`Failed to fetch active users: ${response.statusText}`);
+        }
+
         const users = await response.json();
-        if (!response.ok) throw new Error(users.error || "Failed to load users");
-        const userList = document.getElementById("activeUsers");
-        userList.innerHTML = users.map(user => `<li onclick="ShowChat('${user.id}', '${user.username}')">${user.username}</li>`).join("");
+        const userList = document.getElementById("userList");
+
+        if (!userList) {
+            console.error("Active users list element not found!");
+            return;
+        }
+
+        // Clear the list before populating
+        userList.innerHTML = "";
+
+        // Add each user to the list
+        users.forEach(user => {
+            if (user.id !== currentUser) { // Exclude the current user
+                const userItem = document.createElement("li");
+                userItem.className = "user-item";
+                userItem.dataset.userId = user.id;
+                userItem.innerHTML = `
+                    <span class="user-status ${user.online ? 'online' : 'offline'}"></span>
+                    ${user.username}
+                `;
+                userItem.onclick = () => ShowChat(user.id, user.username);
+                userList.appendChild(userItem);
+            }
+        });
+
+        console.log("Active users loaded:", users);
     } catch (error) {
-        console.error("Error loading users:", error);
+        console.error("Error loading active users:", error);
+        ShowError("Failed to load active users. Please try again.");
     }
 }
 
-// Show chat with a user
-function ShowChat(userId, username) {
-    document.getElementById("receiverId").value = userId;
-    document.getElementById("chatHeader").textContent = `Chat with ${username}`;
-    LoadChatHistory(userId);
-    ShowSection("chat");
+// Function to update the user list with real-time status
+function UpdateUserList(users) {
+    const userList = document.getElementById("userList");
+    if (!userList) {
+        console.error("Active users list element not found!");
+        return;
+    }
+
+    users.forEach(user => {
+        const userItem = userList.querySelector(`[data-user-id="${user.id}"]`);
+        if (userItem) {
+            const statusIndicator = userItem.querySelector(".user-status");
+            if (statusIndicator) {
+                statusIndicator.classList.toggle("online", user.online);
+                statusIndicator.classList.toggle("offline", !user.online);
+            }
+        }
+    });
 }
 
 // Load chat history
 async function LoadChatHistory(receiverId) {
     try {
         const response = await fetch(`/private-messages?sender_id=${currentUser}&receiver_id=${receiverId}`);
+        if (!response.ok) throw new Error('Failed to load history');
+
         const messages = await response.json();
-        if (!response.ok) throw new Error(messages.error || "Failed to load messages");
         const chatHistory = document.getElementById("chatHistory");
-        chatHistory.innerHTML = messages.map(msg => `<div><p><strong>${msg.senderUsername}</strong>: ${msg.content}</p></div>`).join("");
+        chatHistory.innerHTML = messages
+            .map(msg => CreateMessageElement(msg))
+            .join("");
+
         chatHistory.scrollTop = chatHistory.scrollHeight;
     } catch (error) {
-        console.error("Error loading chat history:", error);
+        ShowError("Failed to load chat history");
+        console.error("Chat history error:", error);
     }
+}
+
+// Create a message element for the chat history
+function CreateMessageElement(msg) {
+    const isOutgoing = msg.sender_id === currentUser;
+    return `
+        <div class="message ${isOutgoing ? 'outgoing' : 'incoming'}">
+            <div class="message-meta">
+                <span class="username">${msg.senderUsername}</span>
+                <span class="timestamp">${new Date(msg.created_at).toLocaleTimeString()}</span>
+            </div>
+            <div class="message-content">${msg.content}</div>
+        </div>
+    `;
 }
 
 // Send a message
 async function SendMessage(event) {
     event.preventDefault();
-    if (!IsLoggedIn()) {
-        alert("You must be logged in to send messages.");
+    const receiverId = document.getElementById("receiverId").value;
+    const content = document.getElementById("messageContent").value.trim();
+
+    if (!content || !receiverId) return;
+
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        ShowError("Connection lost. Reconnecting...");
+        ConnectWebSocket();
         return;
     }
-    const receiverId = document.getElementById("receiverId").value;
-    const content = document.getElementById("messageContent").value;
-    if (!receiverId || !content) return alert("Please select a user and enter a message.");
-    socket.send(JSON.stringify({ sender_id: currentUser, senderUsername: currentUsername, receiver_id: receiverId, content }));
-    document.getElementById("messageContent").value = "";
+
+    try {
+        const message = {
+            type: "private_message",
+            receiver_id: receiverId,
+            content: content,
+            timestamp: new Date().toISOString()
+        };
+
+        socket.send(JSON.stringify(message));
+        document.getElementById("messageContent").value = "";
+
+        // Optimistically add message to UI
+        DisplayMessage({
+            ...message,
+            sender_id: currentUser,
+            senderUsername: currentUsername,
+            status: 'pending'
+        });
+
+    } catch (error) {
+        ShowError("Failed to send message");
+        console.error("Message send error:", error);
+    }
 }
 
-document.getElementById("sendMessageForm").addEventListener("submit", SendMessage);
+// Logout function
+function Logout() {
+    document.cookie = "user_id=; path=/; max-age=0";
+    document.cookie = "username=; path=/; max-age=0";
 
+    currentUser = null;
+    currentUsername = null;
+
+    if (socket) {
+        socket.close();
+        socket = null;
+    }
+
+    ShowSection("login");
+}
+
+// Show error message
+function ShowError(message) {
+    const errorElement = document.getElementById("message");
+    errorElement.textContent = message;
+    errorElement.classList.add("error");
+    setTimeout(() => errorElement.classList.remove("error"), 3000);
+}
+
+// Event listeners
+document.getElementById("sendMessageForm").addEventListener("submit", SendMessage);
+document.getElementById("logoutButton").addEventListener("click", Logout);
+
+// Initialize session on page load
 InitSession();

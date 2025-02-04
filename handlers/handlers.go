@@ -180,14 +180,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 // Fetch all posts
 func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
-    userID := r.Header.Get("User-ID")
-    if userID == "" {
-        w.WriteHeader(http.StatusUnauthorized)
-        json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
-        return
-    }
-
-    rows, err := database.Db.Query(`
+	rows, err := database.Db.Query(`
         SELECT 
             p.id, 
             p.username, 
@@ -199,45 +192,57 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
         FROM posts p
         ORDER BY p.created_at DESC
     `)
-    if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch posts: " + err.Error()})
-        return
-    }
-    defer rows.Close()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch posts: " + err.Error()})
+		return
+	}
+	defer rows.Close()
 
-    var posts []struct {
-        ID        string `json:"id"`
-        Username  string `json:"username"`
-        Title     string `json:"title"`
-        Content   string `json:"content"`
-        CreatedAt string `json:"created_at"`
-        Likes     int    `json:"likes"`
-        Dislikes  int    `json:"dislikes"`
-    }
-    for rows.Next() {
-        var post struct {
-            ID        string `json:"id"`
-            Username  string `json:"username"`
-            Title     string `json:"title"`
-            Content   string `json:"content"`
-            CreatedAt string `json:"created_at"`
-            Likes     int    `json:"likes"`
-            Dislikes  int    `json:"dislikes"`
-        }
-        err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Content, &post.CreatedAt, &post.Likes, &post.Dislikes)
-        if err != nil {
-            w.WriteHeader(http.StatusInternalServerError)
-            json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan post: " + err.Error()})
-            return
-        }
-        posts = append(posts, post)
-    }
+	var posts []struct {
+		ID        string `json:"id"`
+		Username  string `json:"username"`
+		Title     string `json:"title"`
+		Content   string `json:"content"`
+		CreatedAt string `json:"created_at"`
+		Likes     int    `json:"likes"`
+		Dislikes  int    `json:"dislikes"`
+	}
+	for rows.Next() {
+		var post struct {
+			ID        string `json:"id"`
+			Username  string `json:"username"`
+			Title     string `json:"title"`
+			Content   string `json:"content"`
+			CreatedAt string `json:"created_at"`
+			Likes     int    `json:"likes"`
+			Dislikes  int    `json:"dislikes"`
+		}
+		err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Content, &post.CreatedAt, &post.Likes, &post.Dislikes)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan post: " + err.Error()})
+			return
+		}
+		posts = append(posts, post)
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(posts)
+	// Return an empty array if no posts are found
+	if posts == nil {
+		posts = []struct {
+			ID        string `json:"id"`
+			Username  string `json:"username"`
+			Title     string `json:"title"`
+			Content   string `json:"content"`
+			CreatedAt string `json:"created_at"`
+			Likes     int    `json:"likes"`
+			Dislikes  int    `json:"dislikes"`
+		}{}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(posts)
 }
-
 
 // Like a comment
 func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
@@ -770,29 +775,33 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
 var Clients = make(map[string]*websocket.Conn) // Map to store connected clients
 
 func GetOnlineUsersHandler(w http.ResponseWriter, r *http.Request) {
-	var users []struct {
-		ID       string `json:"id"`
-		Username string `json:"username"`
-	}
+    var users []struct {
+        ID       string `json:"id"`
+        Username string `json:"username"`
+        Online   bool   `json:"online"`
+    }
 
-	for userID, conn := range Clients { // `clients` map from main.go
-		if conn != nil {
-			var username string
-			err := database.Db.QueryRow("SELECT nickname FROM users WHERE id = ?", userID).Scan(&username)
-			if err == nil {
-				users = append(users, struct {
-					ID       string `json:"id"`
-					Username string `json:"username"`
-				}{
-					ID:       userID,
-					Username: username,
-				})
-			}
-		}
-	}
+    for userID, conn := range Clients { // `Clients` map from main.go
+        if conn != nil {
+            var username string
+            err := database.Db.QueryRow("SELECT nickname FROM users WHERE id = ?", userID).Scan(&username)
+            if err == nil {
+                users = append(users, struct {
+                    ID       string `json:"id"`
+                    Username string `json:"username"`
+                    Online   bool   `json:"online"`
+                }{
+                    ID:       userID,
+                    Username: username,
+                    Online:   true, // Mark as online
+                })
+            }
+        }
+    }
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(users)
 }
 
 func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
@@ -801,13 +810,6 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
     if senderID == "" || receiverID == "" {
         w.WriteHeader(http.StatusBadRequest)
         json.NewEncoder(w).Encode(map[string]string{"error": "Sender ID and Receiver ID are required"})
-        return
-    }
-
-    userID := r.Header.Get("User-ID")
-    if userID == "" || (userID != senderID && userID != receiverID) {
-        w.WriteHeader(http.StatusUnauthorized)
-        json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized access"})
         return
     }
 

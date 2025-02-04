@@ -53,3 +53,86 @@ button:hover {
     display: block;
 }
 
+.message {
+    margin: 8px 0;
+    padding: 12px;
+    border-radius: 12px;
+    max-width: 70%;
+    background: #f0f0f0;
+}
+
+.message.outgoing {
+    background: #dcf8c6;
+    margin-left: auto;
+}
+
+.message.pending {
+    opacity: 0.7;
+}
+
+.user-status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background: #ccc;
+}
+
+.user-status.online {
+    background: #4CAF50;
+}
+
+.message-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.status {
+    margin-left: 8px;
+}
+#activeUsers {
+    width: 200px;
+    float: left;
+    border-right: 1px solid #ccc;
+    padding-right: 20px;
+}
+
+#userList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.user-item {
+    cursor: pointer;
+    padding: 8px;
+    margin: 4px 0;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.user-item:hover {
+    background-color: #f0f0f0;
+}
+
+.user-status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background: #ccc;
+}
+
+.user-status.online {
+    background: #4CAF50;
+}
+
+.user-status.offline {
+    background: #ccc;
+}

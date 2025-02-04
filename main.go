@@ -67,7 +67,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
             continue
         }
 
-        // Send message to the receiver if online
+        // Send message to receiver if online
         if receiverConn, ok := handlers.Clients[msg.ReceiverID]; ok {
             err := receiverConn.WriteJSON(msg)
             if err != nil {
@@ -78,12 +78,16 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 // Broadcast a message to the receiver
-func BroadcastMessage(msg struct {
-	SenderID   string `json:"sender_id"`
-	ReceiverID string `json:"receiver_id"`
-	Content    string `json:"content"`
-}) {
-	// Implement logic to send the message to the receiver via WebSocket
+func BroadcastUserStatus(userID string, online bool) {
+    for _, conn := range handlers.Clients {
+        conn.WriteJSON(map[string]interface{}{
+            "type": "user_status",
+            "user": map[string]interface{}{
+                "id":     userID,
+                "online": online,
+            },
+        })
+    }
 }
 func main() {
 	// Initialize the database
