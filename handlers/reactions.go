@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	database "main/Database"
 	"net/http"
 	"time"
@@ -214,6 +215,8 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 
 func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
+	fmt.Println("postid" , postID)
+
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})
@@ -260,6 +263,7 @@ func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 // Dislike a post
 func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
+	fmt.Println("postid" , postID)
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})

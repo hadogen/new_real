@@ -1,5 +1,5 @@
-import { ShowSection } from "./utils.js";
-import { ConnectWebSocket, fetchActiveUsers, ws } from "./websocket.js";
+import { ShowSection } from "./ui.js";
+import { ConnectWebSocket, fetchActiveUsers } from "./websocket.js";
 
 let currentUser = null;
 let currentUsername = null;
@@ -36,7 +36,6 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     }
 });
 
-// Login 
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -57,20 +56,17 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
             throw new Error(result.error || "Failed to login");
         }
 
-        currentUser = result.user_id; 
-        currentUsername = result.username;
+        setCurrentUser(result.user_id);
+        setCurrentUsername(result.username);
         document.getElementById("message").textContent = result.message || "Login successful!";
         ShowSection("posts");
         document.getElementById("currentUser").textContent = currentUsername;
-        ws = ConnectWebSocket()
-        fetchActiveUsers()
-
+        ConnectWebSocket();
+        fetchActiveUsers();
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }
 });
-
-export { currentUser, currentUsername, setCurrentUser, setCurrentUsername };
 
 function setCurrentUser(userId) {
     currentUser = userId;
@@ -79,3 +75,5 @@ function setCurrentUser(userId) {
 function setCurrentUsername(username) {
     currentUsername = username;
 }
+
+export { currentUser, currentUsername, setCurrentUser, setCurrentUsername };

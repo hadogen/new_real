@@ -137,7 +137,10 @@ func main() {
 	}
 	defer db.Close()
 
-	http.HandleFunc("/register", handlers.RegisterHandler)
+	
+
+
+    http.HandleFunc("/register", handlers.RegisterHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)
 	http.HandleFunc("/posts", handlers.GetPostsHandler)
 	http.HandleFunc("/posts/create", handlers.CreatePostHandler)
@@ -145,7 +148,11 @@ func main() {
 	http.HandleFunc("/posts/category", handlers.GetPostsByCategoryHandler)
 	http.HandleFunc("/posts/created", handlers.GetPostsByUserHandler)
 	http.HandleFunc("/posts/liked", handlers.GetLikedPostsHandler)
-	http.HandleFunc("/posts/dislike", handlers.DislikeCommentHandler)
+	http.HandleFunc("/posts/dislike", handlers.DislikePostHandler)
+	http.HandleFunc("/comments/create", handlers.CreateCommentHandler)
+	http.HandleFunc("/comments", handlers.GetCommentsHandler)
+	http.HandleFunc("/comments/like", handlers.LikeCommentHandler)
+	http.HandleFunc("/comments/dislike", handlers.DislikeCommentHandler)
 	http.HandleFunc("/private-messages", handlers.GetPrivateMessagesHandler)
 	http.HandleFunc("/online-users", GetActiveUsers)
 	http.HandleFunc("/ws", HandleWebSocket)
