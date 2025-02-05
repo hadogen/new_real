@@ -5,7 +5,6 @@ export function ShowComments(postId) {
     LoadComments(postId);
 }
 
-// Load comments
 export async function LoadComments(postId) {
     try {
         const comments = await fetchProtectedResource(`/comments?post_id=${postId}`);
