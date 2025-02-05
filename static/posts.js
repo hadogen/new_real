@@ -1,16 +1,34 @@
 import { currentUser, currentUsername } from './auth.js';
 
+async function fetchProtectedResource(url, options = {}) {
+    try {
+        const response = await fetch(url, options);
+        
+        if (response.status === 401) {
+            // Show the login section if unauthorized
+            ShowSection("login");
+            document.getElementById("message").textContent = "Session expired. Please log in again.";
+            return null;
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching resource:", error);
+    }
+}
+
 export async function LoadPosts() {
     try {
-        const response = await fetch("/posts", {
+        const posts = await fetchProtectedResource("/posts", {
             headers: {
                 "User-ID": currentUser,
                 "Username": currentUsername,
             },
         });
-        const posts = await response.json();
-        if (!response.ok) {
-            throw new Error(posts.error || "Failed to load posts");
+
+        if (!posts) {
+            console.log("responce login");
+            throw new Error("Failed to load posts");
         }
 
         const postFeed = document.getElementById("postFeed");

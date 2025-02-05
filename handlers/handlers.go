@@ -79,7 +79,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the user from the database
 	var user struct {
 		ID       string `json:"id"`
 		Nickname string `json:"nickname"`
@@ -100,7 +99,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Compare the password
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(credentials.Password))
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)

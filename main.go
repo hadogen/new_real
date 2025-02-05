@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	database "main/Database"
+	"main/auth"
 	"main/handlers"
 	"net/http"
 	"sync"
@@ -50,70 +51,68 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	onlineConnections.mutex.Lock()
 	onlineConnections.clients[username] = conn
-    fmt.Println("the username that would get stored in the onlineConnections", username)
+	fmt.Println("the username that would get stored in the onlineConnections", username)
 	onlineConnections.mutex.Unlock()
 
 	for {
 		_, msg, err := conn.ReadMessage()
-        if err != nil {
+		if err != nil {
 			log.Println("Error reading message:", err)
 			break
 		}
 
-        var messageData struct {
-            Type     string `json:"type"`
-            Username string `json:"username"`
-            Message  string `json:"message"`
-            Receiver string `json:"receiver"`
-            Time     string `json:"time"`
-        }
-        err = json.Unmarshal(msg, &messageData)
-        if err != nil {
-            log.Println("Error unmarshalling message:", err)
-            continue
-        }
+		var messageData struct {
+			Type     string `json:"type"`
+			Username string `json:"username"`
+			Message  string `json:"message"`
+			Receiver string `json:"receiver"`
+			Time     string `json:"time"`
+		}
+		err = json.Unmarshal(msg, &messageData)
+		if err != nil {
+			log.Println("Error unmarshalling message:", err)
+			continue
+		}
 
-        _, err = database.Db.Exec(`
+		_, err = database.Db.Exec(`
             INSERT INTO private_messages (sender, receiver, message, created_at)
             VALUES (?, ?, ?, ?)
         `, messageData.Username, messageData.Receiver, messageData.Message, messageData.Time)
 
-        if err != nil {
+		if err != nil {
 			log.Println("Error inserting message into the database:", err)
 			break
 		}
 
 		log.Printf("Received message from %s to %s: %s", messageData.Username, messageData.Receiver, messageData.Message)
 
-        onlineConnections.mutex.Lock()
-        receiverConn, ok := onlineConnections.clients[messageData.Receiver]
-        onlineConnections.mutex.Unlock()
+		onlineConnections.mutex.Lock()
+		receiverConn, ok := onlineConnections.clients[messageData.Receiver]
+		onlineConnections.mutex.Unlock()
 
-        if ok {
-            responseMessage := map[string]string{
-                "type":    "private",
-                "sender":  messageData.Username,
-                "message": messageData.Message,
-                "time":    messageData.Time,
-            }
+		if ok {
+			responseMessage := map[string]string{
+				"type":    "private",
+				"sender":  messageData.Username,
+				"message": messageData.Message,
+				"time":    messageData.Time,
+			}
 
-            responseMessageJSON, err := json.Marshal(responseMessage)
-            if err != nil {
-                log.Println("Error marshalling response message:", err)
-                continue
-            }
+			responseMessageJSON, err := json.Marshal(responseMessage)
+			if err != nil {
+				log.Println("Error marshalling response message:", err)
+				continue
+			}
 
-            err = receiverConn.WriteMessage(websocket.TextMessage, responseMessageJSON)
-            if err != nil {
-                log.Println("Error sending message to receiver:", err)
-            }
-        } else {
-            log.Printf("Receiver %s is not online", messageData.Receiver)
-        }
+			err = receiverConn.WriteMessage(websocket.TextMessage, responseMessageJSON)
+			if err != nil {
+				log.Println("Error sending message to receiver:", err)
+			}
+		} else {
+			log.Printf("Receiver %s is not online", messageData.Receiver)
+		}
 	}
 }
-
-
 
 func GetActiveUsers(w http.ResponseWriter, r *http.Request) {
 	onlineConnections.mutex.Lock()
@@ -121,8 +120,8 @@ func GetActiveUsers(w http.ResponseWriter, r *http.Request) {
 	var activeUsers []string
 	for username := range onlineConnections.clients {
 		activeUsers = append(activeUsers, username)
-        fmt.Println("Active users:", activeUsers)
-        fmt.Println(len(onlineConnections.clients))
+		fmt.Println("Active users:", activeUsers)
+		fmt.Println(len(onlineConnections.clients))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -137,25 +136,23 @@ func main() {
 	}
 	defer db.Close()
 
-	
-
-
-    http.HandleFunc("/register", handlers.RegisterHandler)
+	http.HandleFunc("/register", handlers.RegisterHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)
-	http.HandleFunc("/posts", handlers.GetPostsHandler)
-	http.HandleFunc("/posts/create", handlers.CreatePostHandler)
-	http.HandleFunc("/posts/like", handlers.LikePostHandler)
-	http.HandleFunc("/posts/category", handlers.GetPostsByCategoryHandler)
-	http.HandleFunc("/posts/created", handlers.GetPostsByUserHandler)
-	http.HandleFunc("/posts/liked", handlers.GetLikedPostsHandler)
-	http.HandleFunc("/posts/dislike", handlers.DislikePostHandler)
-	http.HandleFunc("/comments/create", handlers.CreateCommentHandler)
-	http.HandleFunc("/comments", handlers.GetCommentsHandler)
-	http.HandleFunc("/comments/like", handlers.LikeCommentHandler)
-	http.HandleFunc("/comments/dislike", handlers.DislikeCommentHandler)
-	http.HandleFunc("/private-messages", handlers.GetPrivateMessagesHandler)
-	http.HandleFunc("/online-users", GetActiveUsers)
-	http.HandleFunc("/ws", HandleWebSocket)
+
+	http.HandleFunc("/posts", auth.Middleware(handlers.GetPostsHandler))
+	http.HandleFunc("/posts/create", auth.Middleware(handlers.CreatePostHandler))
+	http.HandleFunc("/posts/like", auth.Middleware(handlers.LikePostHandler))
+	http.HandleFunc("/posts/category", auth.Middleware(handlers.GetPostsByCategoryHandler))
+	http.HandleFunc("/posts/created", auth.Middleware(handlers.GetPostsByUserHandler))
+	http.HandleFunc("/posts/liked", auth.Middleware(handlers.GetLikedPostsHandler))
+	http.HandleFunc("/posts/dislike", auth.Middleware(handlers.DislikePostHandler))
+	http.HandleFunc("/comments/create", auth.Middleware(handlers.CreateCommentHandler))
+	http.HandleFunc("/comments", auth.Middleware(handlers.GetCommentsHandler))
+	http.HandleFunc("/comments/like", auth.Middleware(handlers.LikeCommentHandler))
+	http.HandleFunc("/comments/dislike", auth.Middleware(handlers.DislikeCommentHandler))
+	http.HandleFunc("/private-messages", auth.Middleware(handlers.GetPrivateMessagesHandler))
+	http.HandleFunc("/online-users", auth.Middleware(GetActiveUsers))
+	http.HandleFunc("/ws", auth.Middleware(HandleWebSocket))
 
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/", fs)
