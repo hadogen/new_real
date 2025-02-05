@@ -1,5 +1,5 @@
 import { currentUsername } from './auth.js';
-
+window.sendPrivateMessage = sendPrivateMessage;
 let ws = null;
 export {ws}
 

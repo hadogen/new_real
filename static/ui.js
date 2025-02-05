@@ -14,9 +14,6 @@ export function ShowSection(sectionId) {
 
     document.getElementById(sectionId).classList.add("active");
 
-    if (sectionId === "posts") {
-        LoadPosts();
-    }
 }
 
 ShowSection("register");

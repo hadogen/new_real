@@ -31,8 +31,8 @@ export async function LoadPosts() {
                 `
                 )
                 .join("");
-
                 fetchActiveUsers();
+                ShowSection("posts");
         } else {
             postFeed.innerHTML = "<p>No posts found.</p>";
             fetchActiveUsers();
@@ -117,3 +117,5 @@ document.getElementById("createPostForm").addEventListener("submit", async (e) =
     }
 });
 
+
+window.LoadPosts = LoadPosts;

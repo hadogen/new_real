@@ -6,6 +6,7 @@ export function ShowComments(postId) {
     LoadComments(postId);
 }
 
+// Load comments 
 export async function LoadComments(postId) {
     try {
         const response = await fetch(`/comments?post_id=${postId}`);
@@ -38,6 +39,7 @@ export async function LoadComments(postId) {
     }
 }
 
+// Create a comment
 document.getElementById("createCommentForm").addEventListener("submit", async (e) => {
     e.preventDefault(); 
 
@@ -70,6 +72,7 @@ document.getElementById("createCommentForm").addEventListener("submit", async (e
     }
 });
 
+// Like a comment
 export async function LikeComment(commentId) {
     try {
         const response = await fetch(`/comments/like?comment_id=${commentId}`, {
@@ -91,6 +94,7 @@ export async function LikeComment(commentId) {
     }
 }
 
+// Dislike a comment
 export async function DislikeComment(commentId) {
     try {
         const response = await fetch(`/comments/dislike?comment_id=${commentId}`, {
@@ -111,3 +115,6 @@ export async function DislikeComment(commentId) {
         document.getElementById("message").textContent = error.message;
     }
 }
+
+window.LikeComment = LikeComment;
+window.DislikeComment = DislikeComment;
