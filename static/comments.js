@@ -1,18 +1,16 @@
 import { currentUser, currentUsername } from './auth.js';
-
 export function ShowComments(postId) {
     document.getElementById("commentPostId").value = postId;
     ShowSection("comments");
     LoadComments(postId);
 }
 
-// Load comments 
+// Load comments
 export async function LoadComments(postId) {
     try {
-        const response = await fetch(`/comments?post_id=${postId}`);
-        const comments = await response.json();
-        if (!response.ok) {
-            throw new Error(comments.error || "Failed to load comments");
+        const comments = await fetchProtectedResource(`/comments?post_id=${postId}`);
+        if (!comments) {
+            throw new Error("Failed to load comments");
         }
 
         const commentFeed = document.getElementById("commentFeed");
@@ -49,7 +47,7 @@ document.getElementById("createCommentForm").addEventListener("submit", async (e
     };
 
     try {
-        const response = await fetch("/comments/create", {
+        const result = await fetchProtectedResource("/comments/create", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -59,9 +57,8 @@ document.getElementById("createCommentForm").addEventListener("submit", async (e
             body: JSON.stringify(comment),
         });
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || "Failed to create comment");
+        if (!result) {
+            throw new Error("Failed to create comment");
         }
 
         document.getElementById("message").textContent = result.message || "Comment created successfully!";
@@ -75,16 +72,15 @@ document.getElementById("createCommentForm").addEventListener("submit", async (e
 // Like a comment
 export async function LikeComment(commentId) {
     try {
-        const response = await fetch(`/comments/like?comment_id=${commentId}`, {
+        const result = await fetchProtectedResource(`/comments/like?comment_id=${commentId}`, {
             method: "POST",
             headers: {
                 "User-ID": currentUser,
             },
         });
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || "Failed to like comment");
+        if (!result) {
+            throw new Error("Failed to like comment");
         }
 
         document.getElementById("message").textContent = result.message || "Comment liked successfully!";
@@ -97,16 +93,15 @@ export async function LikeComment(commentId) {
 // Dislike a comment
 export async function DislikeComment(commentId) {
     try {
-        const response = await fetch(`/comments/dislike?comment_id=${commentId}`, {
+        const result = await fetchProtectedResource(`/comments/dislike?comment_id=${commentId}`, {
             method: "POST",
             headers: {
                 "User-ID": currentUser,
             },
         });
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || "Failed to dislike comment");
+        if (!result) {
+            throw new Error("Failed to dislike comment");
         }
 
         document.getElementById("message").textContent = result.message || "Comment disliked successfully!";

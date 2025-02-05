@@ -1,13 +1,12 @@
 import { currentUser, currentUsername } from './auth.js';
-
+window.fetchProtectedResource = fetchProtectedResource;
 async function fetchProtectedResource(url, options = {}) {
     try {
         const response = await fetch(url, options);
         
         if (response.status === 401) {
-            // Show the login section if unauthorized
             ShowSection("login");
-            document.getElementById("message").textContent = "Session expired. Please log in again.";
+            document.getElementById("message").textContent = "Please log in";
             return null;
         }
 

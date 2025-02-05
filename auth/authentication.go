@@ -34,7 +34,6 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessionCookie, err := r.Cookie("session")
 		if err != nil || sessionCookie.Value == "" {
-
 			log.Println("Unauthorized. Redirecting to login.")
 			w.WriteHeader(http.StatusUnauthorized) // Return 401 status
 			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
