@@ -20,31 +20,37 @@ export function ConnectWebSocket() {
 
 let selectedUser = null; 
 
-export function fetchActiveUsers() {
-    fetch('/online-users')
-        .then(response => response.json())
-        .then(users => {
-            const userList = document.getElementById('userList');
-            userList.innerHTML = '';
-            console.log("Active users:", users)
-            users.forEach(user => {
-                const userItem = document.createElement('li');
-                userItem.classList.add('user-item');
-                userItem.textContent = user;
+export async function fetchActiveUsers() {
+    try {
+        const users = await fetchProtectedResource('/online-users');
+        if (!users) {
+            throw new Error(`HTTP error! Status: ${users.status}`);
+        }
 
-                userItem.addEventListener('click', () => {
-                     selectedUser = user;
-                     loadChatWithUser(selectedUser);
-                    document.getElementById('messageBox').style.display = 'block';
-                    document.getElementById('selectedUserName').textContent = selectedUser;
-                });
+        const userList = document.getElementById('userList');
+        userList.innerHTML = '';
+        console.log("Active users:", users);
 
-                userList.appendChild(userItem);
+        const otherUsers = users.filter(user => user !== currentUsername);
+
+        otherUsers.forEach(user => {
+            const userItem = document.createElement('li');
+            userItem.classList.add('user-item');
+            userItem.textContent = user;
+
+            userItem.addEventListener('click', () => {
+                selectedUser = user;
+                loadChatWithUser(selectedUser);
+                document.getElementById('messageBox').style.display = 'block';
+                document.getElementById('selectedUserName').textContent = selectedUser;
             });
-        })
-        .catch(error => console.error('Error fetching active users:', error));
-}
 
+            userList.appendChild(userItem);
+        });
+    } catch (error) {
+        console.error('Error fetching active users:', error);
+    }
+}
 export function sendPrivateMessage() {
     const messageInput = document.getElementById('messageInput');
     const message = messageInput.value;
