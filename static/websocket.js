@@ -67,9 +67,7 @@ export function sendPrivateMessage() {
 
 export async function fetchMessages(sender, receiver) {
     try {
-        const response = await fetch(`/private-messages?sender=${sender}&receiver=${receiver}`);
-        console.log(sender, receiver, "when getting the messages")
-        let messages = await response.json();
+        const messages = await fetchProtectedResource(`/private-messages?sender=${sender}&receiver=${receiver}`);
 
         if (!Array.isArray(messages)) {
             messages = [];

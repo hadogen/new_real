@@ -61,19 +61,18 @@ export async function LoadPosts() {
 
 export async function LikePost(postId) {
     try {
-        const response = await fetch(`/posts/like?post_id=${postId}`, {
+        const response = await fetchProtectedResource(`/posts/like?post_id=${postId}`, {
             method: "POST",
             headers: {
                 "User-ID": currentUser,
             },
         });
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || "Failed to like post");
+        if (!response) {
+            throw new Error(response.error || "Failed to like post");
         }
 
-        document.getElementById("message").textContent = result.message || "Post liked successfully!";
+        document.getElementById("message").textContent = response.message || "Post liked successfully!";
         LoadPosts(); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
@@ -82,19 +81,18 @@ export async function LikePost(postId) {
 
 export async function DislikePost(postId) {
     try {
-        const response = await fetch(`/posts/dislike?post_id=${postId}`, {
+        const response = await fetchProtectedResource(`/posts/dislike?post_id=${postId}`, {
             method: "POST",
             headers: {
                 "User-ID": currentUser,
             },
         });
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || "Failed to dislike post");
+        if (!response) {
+            throw new Error(response.error || "Failed to dislike post");
         }
 
-        document.getElementById("message").textContent = result.message || "Post disliked successfully!";
+        document.getElementById("message").textContent = response.message || "Post disliked successfully!";
         LoadPosts(); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
@@ -111,7 +109,7 @@ document.getElementById("createPostForm").addEventListener("submit", async (e) =
     };
 
     try {
-        const response = await fetch("/posts/create", {
+        const response = await fetchProtectedResource("/posts/create", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -121,12 +119,11 @@ document.getElementById("createPostForm").addEventListener("submit", async (e) =
             body: JSON.stringify(post),
         });
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || "Failed to create post");
+        if (!response) {
+            throw new Error(response.error || "Failed to create post");
         }
 
-        document.getElementById("message").textContent = result.message || "Post created successfully!";
+        document.getElementById("message").textContent = response.message || "Post created successfully!";
         document.getElementById("createPostForm").reset();
         LoadPosts(); 
     } catch (error) {
