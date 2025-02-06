@@ -6,9 +6,8 @@ async function fetchProtectedResource(url, options = {}) {
         
         if (response.status === 401) {
             ShowSection("login");
+            document.getElementById("currentUser").textContent = "";
             document.getElementById("message").textContent = "Please log in";
-            window.currentUser = null;
-            window.currentUsername = null;
             return null;
         }
 

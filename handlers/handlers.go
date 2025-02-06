@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	database "main/Database"
+	websocket "main/websocket"
 	"net/http"
 	"time"
 
@@ -39,7 +40,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -48,10 +48,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	user.Password = string(hashedPassword)
 
-	// Generate a unique ID
 	user.ID = uuid.New().String()
 
-	// Insert the user into the database
 	_, err = database.Db.Exec(`
         INSERT INTO users (id, nickname, email, password, age, gender, first_name, last_name)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -114,8 +112,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	_, err = database.Db.Exec(`
 	DELETE FROM sessions WHERE nickname = ?
-	`,user.Nickname)
-	if err != nil {	
+	`, user.Nickname)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete session"})
 		fmt.Println("failed to delete session")
@@ -153,6 +151,43 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "Session not found", http.StatusUnauthorized)
+		return
+	}
+
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
+	if err != nil {
+		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	_, err = database.Db.Exec(`DELETE FROM sessions WHERE session = ?`, sessionCookie.Value)
+	if err != nil {
+		http.Error(w, "Failed to delete session", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{Name: "session", Value: "", Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "user_id", Value: "", Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "username", Value: "", Path: "/", MaxAge: -1})
+
+	websocket.OnlineConnections.Mutex.Lock()
+
+	if conn, ok := websocket.OnlineConnections.Clients[username]; ok {
+		conn.Close()
+		delete(websocket.OnlineConnections.Clients, username)
+		fmt.Println("User logged out and connection deleted:", username)
+	}
+	websocket.OnlineConnections.Mutex.Unlock()
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Logged out successfully"))
+}
+
 // Create a new post
 func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	var post struct {
@@ -167,7 +202,6 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the user ID and username from the session
 	userID := r.Header.Get("User-ID")
 	username := r.Header.Get("Username")
 	if userID == "" || username == "" {
@@ -176,11 +210,9 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate a unique ID for the post
 	postID := uuid.New().String()
 	createdAt := time.Now().Format(time.RFC3339)
 
-	// Insert the post into the database
 	_, err = database.Db.Exec(`
         INSERT INTO posts (id, user_id, username, title, content, category, created_at)
         VALUES (?, ?, ?, ?, ?, ?,?)

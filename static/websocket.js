@@ -26,13 +26,13 @@ export async function fetchActiveUsers() {
         if (!users) {
             throw new Error(`HTTP error! Status: ${users.status}`);
         }
-
+  
         const userList = document.getElementById('userList');
         userList.innerHTML = '';
         console.log("Active users:", users);
 
         const otherUsers = users.filter(user => user !== currentUsername);
-
+    
         otherUsers.forEach(user => {
             const userItem = document.createElement('li');
             userItem.classList.add('user-item');
@@ -44,7 +44,6 @@ export async function fetchActiveUsers() {
                 document.getElementById('messageBox').style.display = 'block';
                 document.getElementById('selectedUserName').textContent = selectedUser;
             });
-
             userList.appendChild(userItem);
         });
     } catch (error) {
@@ -55,7 +54,7 @@ export function sendPrivateMessage() {
     const messageInput = document.getElementById('messageInput');
     const message = messageInput.value;
 
-    if (currentUsername && message && selectedUser) {
+    if (currentUsername && message.trim()!=="" && selectedUser) {
         const messageData = {
             type: 'private',
             username: currentUsername, 
@@ -63,7 +62,7 @@ export function sendPrivateMessage() {
             receiver: selectedUser,
             time: new Date().toISOString()
         };
-
+        console.log("from", currentUsername, "to", selectedUser);
         ws.send(JSON.stringify(messageData));
 
         messageInput.value = '';
@@ -84,7 +83,7 @@ export async function fetchMessages(sender, receiver) {
         messageList.innerHTML = "";
 
         messages.forEach(msg => {
-            console.log("Stored message:", msg);
+            console.log("Stored ", msg);
             const messageElement = document.createElement("li");
             messageElement.textContent = `${msg.sender}: ${msg.message}`;
             messageList.appendChild(messageElement);
@@ -100,4 +99,5 @@ export function loadChatWithUser(receiver) {
     const sender = currentUsername; 
     document.getElementById("selectedUserName").textContent = `Chat with ${receiver}`;
     fetchMessages(sender, receiver);
+    console.log("Loading chat with", receiver);
 }

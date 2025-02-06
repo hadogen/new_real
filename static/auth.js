@@ -36,6 +36,28 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     }
 });
 
+document.getElementById("logoutButton").addEventListener("click", async () => {
+    try {
+        const response = await fetch("/logout", { method: "POST" });
+
+        if (!response.ok) {
+            throw new Error("Failed to logout");
+        }
+
+        currentUser = null;
+        currentUsername = null;
+        document.getElementById("currentUser").textContent = "";
+        ShowSection("login");
+        logoutButton.style.display = "none";
+        if (window.ws) {
+            window.ws.close();
+        }
+
+    } catch (error) {
+        console.error("Logout error:", error.message);
+    }
+});
+
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -64,6 +86,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
         document.getElementById("currentUser").textContent = currentUsername;
         ConnectWebSocket();
         fetchActiveUsers();
+        logoutButton.style.display = "block"; 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }

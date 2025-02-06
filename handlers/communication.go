@@ -33,7 +33,6 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	// ✅ Always return an array (even if no messages exist)
 	messages := []map[string]string{}
 
 	for rows.Next() {
@@ -45,15 +44,17 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Append each message to the messages slice
 		messages = append(messages, map[string]string{
 			"sender":     sender,
 			"receiver":   receiver,
 			"message":    message,
 			"created_at": createdAt,
 		})
+
 	}
 
-	fmt.Println("These are the messages:", messages)
+	fmt.Println("These are the latest 10 messages:", messages)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

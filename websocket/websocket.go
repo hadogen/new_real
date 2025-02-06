@@ -1,0 +1,126 @@
+package websocket
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	database "main/Database"
+	"net/http"
+	"sync"
+
+	"github.com/gorilla/websocket"
+)
+
+type Online struct {
+	Clients map[string]*websocket.Conn
+	Mutex   sync.Mutex
+}
+
+var OnlineConnections = Online{
+	Clients: make(map[string]*websocket.Conn),
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Error upgrading connection:", err)
+		return
+	}
+	defer conn.Close()
+
+	session, err := r.Cookie("session")
+	if err != nil {
+		log.Println("Error getting session cookie:", err)
+		return
+	}
+	username, err := database.GetUsernameFromSession(session.Value)
+
+	fmt.Println("Username:", username)
+	if err != nil {
+		fmt.Println("Error getting username from session:", err)
+		return
+	}
+
+	OnlineConnections.Mutex.Lock()
+	OnlineConnections.Clients[username] = conn
+	OnlineConnections.Mutex.Unlock()
+
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Error reading message:", err)
+			break
+		}
+
+		var messageData struct {
+			Type     string `json:"type"`
+			Username string `json:"username"`
+			Message  string `json:"message"`
+			Receiver string `json:"receiver"`
+			Time     string `json:"time"`
+		}
+		err = json.Unmarshal(msg, &messageData)
+		if err != nil {
+			log.Println("Error unmarshalling message:", err)
+			continue
+		}
+
+		_, err = database.Db.Exec(`
+            INSERT INTO private_messages (sender, receiver, message, created_at)
+            VALUES (?, ?, ?, ?)
+        `, messageData.Username, messageData.Receiver, messageData.Message, messageData.Time)
+
+		if err != nil {
+			log.Println("Error inserting message into the database:", err)
+			break
+		}
+
+		log.Printf("Received message from %s to %s: %s", messageData.Username, messageData.Receiver, messageData.Message)
+
+		OnlineConnections.Mutex.Lock()
+		receiverConn, ok := OnlineConnections.Clients[messageData.Receiver]
+		OnlineConnections.Mutex.Unlock()
+
+		if ok {
+			responseMessage := map[string]string{
+				"type":    "private",
+				"sender":  messageData.Username,
+				"message": messageData.Message,
+				"time":    messageData.Time,
+			}
+
+			responseMessageJSON, err := json.Marshal(responseMessage)
+			if err != nil {
+				log.Println("Error marshalling response message:", err)
+				continue
+			}
+
+			err = receiverConn.WriteMessage(websocket.TextMessage, responseMessageJSON)
+			if err != nil {
+				log.Println("Error sending message to receiver:", err)
+			}
+		} else {
+			log.Printf("Receiver %s is not online", messageData.Receiver)
+		}
+	}
+}
+
+func GetActiveUsers(w http.ResponseWriter, r *http.Request) {
+	OnlineConnections.Mutex.Lock()
+	defer OnlineConnections.Mutex.Unlock()
+	var activeUsers []string
+	for username := range OnlineConnections.Clients {
+		activeUsers = append(activeUsers, username)
+	
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(activeUsers)
+}
