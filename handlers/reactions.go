@@ -19,7 +19,6 @@ func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the user ID from the session
 	userID := r.Header.Get("User-ID")
 	if userID == "" {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -64,7 +63,6 @@ func DislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the user ID from the session
 	userID := r.Header.Get("User-ID")
 	if userID == "" {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -113,7 +111,6 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the user ID and username from the session
 	userID := r.Header.Get("User-ID")
 	username := r.Header.Get("Username")
 	if userID == "" || username == "" {
@@ -122,11 +119,9 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate a unique ID for the comment
 	commentID := uuid.New().String()
 	createdAt := time.Now().Format(time.RFC3339)
 
-	// Insert the comment into the database
 	_, err = database.Db.Exec(`
         INSERT INTO comments (id, post_id, user_id, username, content, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -269,7 +264,6 @@ func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the user ID from the session
 	userID := r.Header.Get("User-ID")
 	if userID == "" {
 		w.WriteHeader(http.StatusUnauthorized)

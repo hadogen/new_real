@@ -44,7 +44,6 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Append each message to the messages slice
 		messages = append(messages, map[string]string{
 			"sender":     sender,
 			"receiver":   receiver,

@@ -130,7 +130,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("failed to create session")
 		return
 	}
-	// Set session cookies
 	http.SetCookie(w, &http.Cookie{
 		Name:  "user_id",
 		Value: user.ID,
@@ -142,7 +141,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Path:  "/",
 	})
 
-	// Return a success response
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message":  "Login successful",
