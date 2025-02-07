@@ -6,15 +6,19 @@ export {ws}
 export function ConnectWebSocket() {
     ws = new WebSocket("ws://localhost:8080/ws"); 
 
+
     ws.onmessage = function(event) {
-        const data = JSON.parse(event.data); 
-        const messageList = document.getElementById('messageList'); 
+        const data = JSON.parse(event.data);
+        const messageList = document.getElementById('messageList');
         const messageItem = document.createElement('li');
+        const timeFormatted = new Date(data.time).toLocaleTimeString(); 
         messageItem.classList.add('message-item');
-        messageItem.textContent = `${data.sender} [${data.time}]: ${data.message}`;
-        messageList.appendChild(messageItem);
-        console.log(`Received message: ${data.sender} : ${data.message}`)
+        messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
+        
+        messageList.appendChild(messageItem); 
+        messageList.scrollTop = messageList.scrollHeight;
     };
+    
     return ws;
 }
 
@@ -65,6 +69,12 @@ export function sendPrivateMessage() {
         console.log("from", currentUsername, "to", selectedUser);
         ws.send(JSON.stringify(messageData));
 
+        const messageList = document.getElementById('messageList');
+        const messageElement = document.createElement('li');
+        const formattedTime = new Date(messageData.time).toLocaleTimeString();
+
+        messageElement.textContent = `${currentUsername} [${formattedTime}]: ${message}`;
+        messageList.appendChild(messageElement);
         messageInput.value = '';
         fetchActiveUsers();
     }
@@ -72,21 +82,21 @@ export function sendPrivateMessage() {
 
 export async function fetchMessages(sender, receiver) {
     try {
-        const messages = await fetchProtectedResource(`/private-messages?sender=${sender}&receiver=${receiver}`);
+        let messages = await fetchProtectedResource(`/private-messages?sender=${sender}&receiver=${receiver}`);
 
         if (!Array.isArray(messages)) {
             messages = [];
-            console.log("not array")
+            console.log("Messages are not an array");
         }
 
         const messageList = document.getElementById("messageList");
         messageList.innerHTML = "";
 
-        messages.forEach(msg => {
-            console.log("Stored ", msg);
+        messages.reverse().forEach(msg => {
             const messageElement = document.createElement("li");
-            messageElement.textContent = `${msg.sender}: ${msg.message}`;
-            messageList.appendChild(messageElement);
+            const timeFormatted = new Date(msg.created_at).toLocaleTimeString(); 
+            messageElement.textContent = `${msg.sender} [${timeFormatted}]: ${msg.message}`;
+            messageList.appendChild(messageElement); 
         });
 
         messageList.style.display = 'block';
@@ -94,6 +104,7 @@ export async function fetchMessages(sender, receiver) {
         console.error("Error fetching messages:", error);
     }
 }
+
 
 export function loadChatWithUser(receiver) {
     const sender = currentUsername; 
