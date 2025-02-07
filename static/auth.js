@@ -81,7 +81,6 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
         setCurrentUser(result.user_id);
         setCurrentUsername(result.username);
         document.getElementById("message").textContent = result.message || "Login successful!";
-       
         ShowSection("posts");
         document.getElementById("currentUser").textContent = currentUsername;
         ConnectWebSocket();

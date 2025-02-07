@@ -7,6 +7,7 @@ window.ConnectWebSocket = connectWebSocketImpl;
 window.fetchActiveUsers = fetchActiveUsersImpl;
 
  console.log("app.js loaded");
+ ShowSection("register");
 
 import './posts.js';
 import './comments.js';

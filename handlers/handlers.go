@@ -110,6 +110,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Expires: time.Now().Add(24 * time.Hour),
 		Path:    "/",
 	})
+	fmt.Println("Session created:", session)
 	_, err = database.Db.Exec(`
 	DELETE FROM sessions WHERE nickname = ?
 	`, user.Nickname)

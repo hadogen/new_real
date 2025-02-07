@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -33,7 +34,9 @@ import (
 func Middleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessionCookie, err := r.Cookie("session")
+		fmt.Println("loadposts triggered")
 		if err != nil || sessionCookie.Value == "" {
+			fmt.Println("loadposts unauth")
 			log.Println("Unauthorized. Redirecting to login.")
 			w.WriteHeader(http.StatusUnauthorized) // Return 401 status
 			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
