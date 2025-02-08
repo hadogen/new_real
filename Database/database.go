@@ -134,6 +134,7 @@ func createTables(db *sql.DB) error {
 		id integer PRIMARY KEY autoincrement,
 		nickname TEXT,
 		session TEXT,
+		expiration DATETIME,
 		FOREIGN KEY (nickname) REFERENCES users(nickname)
 	);`)
 	if err != nil {

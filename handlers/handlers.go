@@ -104,15 +104,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session := uuid.New().String()
-	http.SetCookie(w, &http.Cookie{
-		Name:    "session",
-		Value:   session,
-		Expires: time.Now().Add(24 * time.Hour),
-		Path:    "/",
-	})
-	fmt.Println("Session created:", session)
+	expiration := time.Now().Add(5 * time.Minute)
 	_, err = database.Db.Exec(`
-	DELETE FROM sessions WHERE nickname = ?
+		DELETE FROM sessions WHERE nickname = ?
 	`, user.Nickname)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -120,11 +114,18 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("failed to delete session")
 		return
 	}
+	http.SetCookie(w, &http.Cookie{
+		Name:    "session",
+		Value:   session,
+		Expires: expiration,
+		Path:    "/",
+	})
+	fmt.Println("Session created:", session)
 
 	_, err = database.Db.Exec(`
-		INSERT INTO sessions (session, nickname)
-		VALUES (?, ?)
-	`, session, user.Nickname)
+		INSERT INTO sessions (session, nickname , expiration)
+		VALUES (?, ?, ?)
+	`, session, user.Nickname, expiration)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create session"})

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	database "main/Database"
 	"net/http"
+	"time"
 )
 
 // func Middleware(next http.HandlerFunc) http.HandlerFunc {
@@ -34,14 +36,34 @@ import (
 func Middleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessionCookie, err := r.Cookie("session")
-		fmt.Println("loadposts triggered")
-		if err != nil || sessionCookie.Value == "" {
-			fmt.Println("loadposts unauth")
-			log.Println("Unauthorized. Redirecting to login.")
-			w.WriteHeader(http.StatusUnauthorized) // Return 401 status
+		fmt.Println("Middleware triggered")
+
+		if err != nil {
+			log.Println("no cookie found")
+			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
+		}
+
+		var nickname string
+		var dbsession string
+		var expiration time.Time
+		err = database.Db.QueryRow("SELECT nickname, session, expiration FROM sessions WHERE session = ?", sessionCookie.Value).Scan(&nickname, &dbsession, &expiration)
+
+		if err != nil || time.Now().After(expiration) {
+			_, _ = database.Db.Exec("DELETE FROM sessions WHERE session = ?", sessionCookie.Value)
+			log.Println("invalid or expired session")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
+			return
+		}
+		// Extra checking
+		if dbsession != sessionCookie.Value {
+			log.Println("invalid session")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
 		}
 		next(w, r)
 	}
 }
+
