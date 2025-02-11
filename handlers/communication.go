@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	database "main/Database"
@@ -8,8 +9,14 @@ import (
 )
 
 func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET"{
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
+		return
+	}
 	sender := r.URL.Query().Get("sender")
 	receiver := r.URL.Query().Get("receiver")
+	before := r.URL.Query().Get("before") 
 
 	if sender == "" || receiver == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -17,13 +24,27 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := database.Db.Query(`
-        SELECT sender, receiver, message, created_at
-        FROM private_messages
-        WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)
-        ORDER BY created_at DESC
-        LIMIT 10
-    `, sender, receiver, receiver, sender)
+	var rows *sql.Rows
+	var err error
+
+	if before != "" {
+		rows, err = database.Db.Query(`
+            SELECT sender, receiver, message, created_at
+            FROM private_messages
+            WHERE ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?))
+            AND created_at < ?
+            ORDER BY created_at ASC
+            LIMIT 10
+        `, sender, receiver, receiver, sender, before)
+	} else {
+		rows, err = database.Db.Query(`
+            SELECT sender, receiver, message, created_at
+            FROM private_messages
+            WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)
+            ORDER BY created_at DESC
+            LIMIT 10
+        `, sender, receiver, receiver, sender)
+	}
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -50,10 +71,9 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			"message":    message,
 			"created_at": createdAt,
 		})
-
 	}
 
-	fmt.Println("These are the latest 10 messages:", messages)
+	fmt.Println("Loaded messages:", messages)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

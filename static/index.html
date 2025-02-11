@@ -102,10 +102,12 @@
     <h2>Active Users</h2>
     <ul id="userList" class="user-list"></ul>
 
-    <div id="messageBox">
+    <div id="messageBox" class="section">
         <h3>Send a private message</h3>
         <h4 id="selectedUserName"></h4>
-        <ul id = "messageList"></ul>
+        <div id="messageBoxContent">
+            <ul id = "messageList"></ul>
+        </div>
         <input type="text" id="messageInput" placeholder="Type your message" />
         <button onclick="sendPrivateMessage()">Send</button>
     </div>

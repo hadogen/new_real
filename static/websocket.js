@@ -54,6 +54,17 @@ export async function fetchActiveUsers() {
         console.error('Error fetching active users:', error);
     }
 }
+export async function fetchAllUsers() {
+    try {
+        const users = fetchProtectedResource("/all-users");
+        if (!users){
+            throw new Error(`all users error status : ${users.status}`)
+        }
+    }
+    catch (error){
+        console.log(error)
+    }
+}
 export function sendPrivateMessage() {
     const messageInput = document.getElementById('messageInput');
     const message = messageInput.value;
@@ -80,30 +91,61 @@ export function sendPrivateMessage() {
     }
 }
 
-export async function fetchMessages(sender, receiver) {
+let lastLoadedTimestamp = null;
+let isFetching = false; 
+
+export async function fetchMessages(sender, receiver, older = false) {
+    if (isFetching) return;
+    isFetching = true; 
+
+    let url = `/private-messages?sender=${sender}&receiver=${receiver}`;
+    
+    if (older && lastLoadedTimestamp) {
+        url += `&before=${lastLoadedTimestamp}`;
+    }
+
     try {
-        let messages = await fetchProtectedResource(`/private-messages?sender=${sender}&receiver=${receiver}`);
+        let messages = await fetchProtectedResource(url);
 
         if (!Array.isArray(messages)) {
             messages = [];
-            console.log("Messages are not an array");
         }
 
         const messageList = document.getElementById("messageList");
-        messageList.innerHTML = "";
 
-        messages.reverse().forEach(msg => {
+        if (!older) {
+            messageList.innerHTML = ""; 
+        }
+
+        messages.reverse().forEach((msg, index) => {
             const messageElement = document.createElement("li");
-            const timeFormatted = new Date(msg.created_at).toLocaleTimeString(); 
+            const timeFormatted = new Date(msg.created_at).toLocaleTimeString();
             messageElement.textContent = `${msg.sender} [${timeFormatted}]: ${msg.message}`;
-            messageList.appendChild(messageElement); 
+            
+            if (older) {
+                messageList.prepend(messageElement); 
+            } else {
+                messageList.appendChild(messageElement); 
+            }
+
+            if (index === 0) {
+                lastLoadedTimestamp = msg.created_at; 
+            }
         });
 
-        messageList.style.display = 'block';
+        isFetching = false;
     } catch (error) {
         console.error("Error fetching messages:", error);
+        isFetching = false;
     }
 }
+document.getElementById('messageList').addEventListener('scroll', function () {
+    if (this.scrollTop === 0) { 
+        console.log("loading another 10 messages");
+        fetchMessages(currentUsername, selectedUser, true);
+    }
+});
+
 
 
 export function loadChatWithUser(receiver) {

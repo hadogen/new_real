@@ -35,6 +35,7 @@ func main() {
 
 	http.HandleFunc("/private-messages", auth.Middleware(handlers.GetPrivateMessagesHandler))
 	http.HandleFunc("/online-users", auth.Middleware(websocket.GetActiveUsers))
+	http.HandleFunc("/all-users", auth.Middleware(handlers.GetAllUsers))
 	http.HandleFunc("/ws", auth.Middleware(websocket.HandleWebSocket))
 
 	fs := http.FileServer(http.Dir("./static"))

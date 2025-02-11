@@ -104,7 +104,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session := uuid.New().String()
-	expiration := time.Now().Add(5 * time.Minute)
+	expiration := time.Now().Add(60 * time.Minute)
 	_, err = database.Db.Exec(`
 		DELETE FROM sessions WHERE nickname = ?
 	`, user.Nickname)
@@ -152,7 +152,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		http.Error(w, "Session not found", http.StatusUnauthorized)
@@ -177,8 +176,15 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	websocket.OnlineConnections.Mutex.Lock()
 
-	if conn, ok := websocket.OnlineConnections.Clients[username]; ok {
-		conn.Close()
+	if conns, ok := websocket.OnlineConnections.Clients[username]; ok {
+		for _, conn:= range conns{
+			err :=conn.Close()
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"error": "failed to close connection" })
+				return
+			}
+		}
 		delete(websocket.OnlineConnections.Clients, username)
 		fmt.Println("User logged out and connection deleted:", username)
 	}
@@ -190,6 +196,11 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 // Create a new post
 func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET"{
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
+		return
+	}
 	var post struct {
 		Title    string `json:"title"`
 		Content  string `json:"content"`
@@ -291,4 +302,29 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(posts)
+}
+
+func GetAllUsers(w http.ResponseWriter, r *http.Request){
+	if r.Method != "GET"{
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
+		return
+	}
+	rows, err := database.Db.Query("SELECT nickname FROM users")
+	if err != nil{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Error Selecting users from database"})
+	}
+	var nicknames []string
+	for rows.Next(){
+		var nickname string
+		err :=rows.Scan(&nickname)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "scaning rows all users failed"})
+		}
+		nicknames = append(nicknames, nickname)
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(nicknames)
 }

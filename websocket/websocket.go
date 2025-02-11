@@ -12,12 +12,12 @@ import (
 )
 
 type Online struct {
-	Clients map[string]*websocket.Conn
+	Clients map[string][]*websocket.Conn
 	Mutex   sync.Mutex
 }
 
 var OnlineConnections = Online{
-	Clients: make(map[string]*websocket.Conn),
+	Clients: make(map[string][]*websocket.Conn),
 }
 
 var upgrader = websocket.Upgrader{
@@ -48,7 +48,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OnlineConnections.Mutex.Lock()
-	OnlineConnections.Clients[username] = conn
+	OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username], conn)
 	OnlineConnections.Mutex.Unlock()
 
 	for {
@@ -84,31 +84,39 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received message from %s to %s: %s", messageData.Username, messageData.Receiver, messageData.Message)
 
 		OnlineConnections.Mutex.Lock()
-		receiverConn, ok := OnlineConnections.Clients[messageData.Receiver]
+		receiverConnections, ok := OnlineConnections.Clients[messageData.Receiver]
 		OnlineConnections.Mutex.Unlock()
 
 		if ok {
-			responseMessage := map[string]string{
-				"type":    "private",
-				"sender":  messageData.Username,
-				"message": messageData.Message,
-				"time":    messageData.Time,
-			}
-
-			responseMessageJSON, err := json.Marshal(responseMessage)
-			if err != nil {
-				log.Println("Error marshalling response message:", err)
-				continue
-			}
-
-			err = receiverConn.WriteMessage(websocket.TextMessage, responseMessageJSON)
-			if err != nil {
-				log.Println("Error sending message to receiver:", err)
+			for _, receiverConnection := range receiverConnections {
+				responseMessage := map[string]string{
+					"type":    "private",
+					"sender":  messageData.Username,
+					"message": messageData.Message,
+					"time":    messageData.Time,
+				}
+				message, _:= json.Marshal(responseMessage)
+				err :=receiverConnection.WriteMessage(websocket.TextMessage, message)
+				if err != nil {
+					log.Println("error sending message")
+				}
 			}
 		} else {
 			log.Printf("Receiver %s is not online", messageData.Receiver)
 		}
 	}
+	for i, activeConn := range OnlineConnections.Clients[username] {
+			if activeConn == conn {
+				if i == len(OnlineConnections.Clients[username])-1 {
+					OnlineConnections.Clients[username] = OnlineConnections.Clients[username][:i]
+				}else {
+					OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username][:i], OnlineConnections.Clients[username][i+1:]...)
+				}
+				log.Println("Connection closed:", conn)
+				break
+			}
+		}
+	OnlineConnections.Mutex.Unlock()
 }
 
 func GetActiveUsers(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +125,6 @@ func GetActiveUsers(w http.ResponseWriter, r *http.Request) {
 	var activeUsers []string
 	for username := range OnlineConnections.Clients {
 		activeUsers = append(activeUsers, username)
-	
 	}
 
 	w.Header().Set("Content-Type", "application/json")

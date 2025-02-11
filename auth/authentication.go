@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	database "main/Database"
 	"net/http"
@@ -36,7 +35,6 @@ import (
 func Middleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessionCookie, err := r.Cookie("session")
-		fmt.Println("Middleware triggered")
 
 		if err != nil {
 			log.Println("no cookie found")
@@ -66,4 +64,3 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
-

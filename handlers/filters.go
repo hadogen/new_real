@@ -85,6 +85,11 @@ func GetPostsByCategoryHandler(w http.ResponseWriter, r *http.Request) {
 
 // Get posts created by the logged-in user
 func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET"{
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
+		return
+	}
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -162,6 +167,11 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET"{
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
+		return
+	}
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
 		w.WriteHeader(http.StatusBadRequest)
