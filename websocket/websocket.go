@@ -50,7 +50,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	OnlineConnections.Mutex.Lock()
 	OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username], conn)
 	OnlineConnections.Mutex.Unlock()
-
+	
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
@@ -83,10 +83,10 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("Received message from %s to %s: %s", messageData.Username, messageData.Receiver, messageData.Message)
 
-		OnlineConnections.Mutex.Lock()
 		receiverConnections, ok := OnlineConnections.Clients[messageData.Receiver]
-		OnlineConnections.Mutex.Unlock()
-
+		//check if the user/sender logs out all connections get deleted 
+		//if the receiver is loged out the message should still be added to the database and not shown for that connection but when he fetches the messages all the
+		fmt.Println("remote addres", conn.RemoteAddr().String())
 		if ok {
 			for _, receiverConnection := range receiverConnections {
 				responseMessage := map[string]string{
@@ -105,18 +105,22 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Receiver %s is not online", messageData.Receiver)
 		}
 	}
-	for i, activeConn := range OnlineConnections.Clients[username] {
-			if activeConn == conn {
-				if i == len(OnlineConnections.Clients[username])-1 {
-					OnlineConnections.Clients[username] = OnlineConnections.Clients[username][:i]
-				}else {
-					OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username][:i], OnlineConnections.Clients[username][i+1:]...)
-				}
-				log.Println("Connection closed:", conn)
-				break
+	var temp []*websocket.Conn
+	if len(OnlineConnections.Clients[username])==1 {
+		OnlineConnections.Mutex.Lock()
+		delete(OnlineConnections.Clients, username)
+		OnlineConnections.Mutex.Unlock()
+	}else{
+		for _, activeConn := range OnlineConnections.Clients[username] {
+			if activeConn.RemoteAddr().String() != conn.RemoteAddr().String() {
+				temp = append(temp, activeConn)
 			}
 		}
-	OnlineConnections.Mutex.Unlock()
+		OnlineConnections.Mutex.Lock()
+		OnlineConnections.Clients[username] = temp
+		OnlineConnections.Mutex.Unlock()
+
+	}
 }
 
 func GetActiveUsers(w http.ResponseWriter, r *http.Request) {

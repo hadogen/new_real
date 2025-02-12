@@ -1,6 +1,7 @@
 import { currentUsername } from './auth.js';
 import { LoadPosts } from './posts.js';
 
+
 export function ShowSection(sectionId) {
     const section = document.getElementById(sectionId);
     const chat = document.getElementById("messageBox")
