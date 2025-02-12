@@ -27,7 +27,6 @@ export async function LoadPosts() {
         });
 
         if (!posts) {
-            console.log("responce login");
             throw new Error("Failed to load posts");
         }
 
@@ -51,6 +50,7 @@ export async function LoadPosts() {
                 .join("");
                 fetchActiveUsers();
                 ShowSection("posts");
+                console.log("posts loaded")
         } else {
             postFeed.innerHTML = "<p>No posts found.</p>";
             fetchActiveUsers();

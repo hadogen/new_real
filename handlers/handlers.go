@@ -177,11 +177,11 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	websocket.OnlineConnections.Mutex.Lock()
 
 	if conns, ok := websocket.OnlineConnections.Clients[username]; ok {
-		for _, conn:= range conns{
-			err :=conn.Close()
+		for _, conn := range conns {
+			err := conn.Close()
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{"error": "failed to close connection" })
+				json.NewEncoder(w).Encode(map[string]string{"error": "failed to close connection"})
 				return
 			}
 		}
@@ -196,9 +196,9 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 // Create a new post
 func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET"{
+	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed"})
 		return
 	}
 	var post struct {
@@ -304,21 +304,21 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(posts)
 }
 
-func GetAllUsers(w http.ResponseWriter, r *http.Request){
-	if r.Method != "GET"{
+func GetAllUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed"})
 		return
 	}
 	rows, err := database.Db.Query("SELECT nickname FROM users")
-	if err != nil{
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Error Selecting users from database"})
 	}
 	var nicknames []string
-	for rows.Next(){
+	for rows.Next() {
 		var nickname string
-		err :=rows.Scan(&nickname)
+		err := rows.Scan(&nickname)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "scaning rows all users failed"})

@@ -33,8 +33,17 @@ func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
         WHERE comment_id = ? AND user_id = ?
     `, commentID, userID).Scan(&likeID)
 	if err == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "You have already liked this comment"})
+		_, err := database.Db.Exec(`
+        DELETE FROM comment_likes
+        WHERE comment_id = ? AND user_id = ?
+    `, commentID, userID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Error removing like comment from database"})
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"message": "like comment removed successfully"})
 		return
 	}
 
@@ -77,8 +86,17 @@ func DislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
         WHERE comment_id = ? AND user_id = ?
     `, commentID, userID).Scan(&dislikeID)
 	if err == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "You have already disliked this comment"})
+		_, err := database.Db.Exec(`
+        DELETE FROM comment_dislikes
+        WHERE comment_id = ? AND user_id = ?
+    `, commentID, userID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Error removing dislike from database"})
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Dislike comment removed successfully"})
 		return
 	}
 
@@ -210,7 +228,7 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 
 func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
-	
+
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})
@@ -232,8 +250,17 @@ func LikePostHandler(w http.ResponseWriter, r *http.Request) {
         WHERE post_id = ? AND user_id = ?
     `, postID, userID).Scan(&likeID)
 	if err == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "You have already liked this post"})
+		_, err := database.Db.Exec(`
+        DELETE FROM post_likes
+        WHERE post_id = ? AND user_id = ?
+    `, postID, userID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Error removing like from database"})
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"message": "like removed successfully"})
 		return
 	}
 
@@ -257,7 +284,7 @@ func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 // Dislike a post
 func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
-	fmt.Println("postid" , postID)
+	fmt.Println("postid", postID)
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})
@@ -278,8 +305,17 @@ func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
         WHERE post_id = ? AND user_id = ?
     `, postID, userID).Scan(&dislikeID)
 	if err == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "You have already disliked this post"})
+		_, err := database.Db.Exec(`
+        DELETE FROM post_dislikes
+        WHERE post_id = ? AND user_id = ?
+    `, postID, userID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Error removing dislike from database"})
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Dislike removed successfully"})
 		return
 	}
 
