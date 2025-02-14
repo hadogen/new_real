@@ -31,7 +31,31 @@ import (
 // 		next(w, r)
 // 	}
 // }
+func AutoLog(next http.HandlerFunc)http.HandlerFunc{
+	return func(w http.ResponseWriter, r* http.Request){
+		sessionCookie , err := r.Cookie("session")
+		if err!= nil{
+			next(w, r)
+			return
+		}
+		var nickname string
+		var dbsession string
+		var expiration time.Time
+		err = database.Db.QueryRow("SELECT nickname, session, expiration FROM sessions WHERE session = ?", sessionCookie.Value).Scan(&nickname, &dbsession, &expiration)
 
+		if err != nil || time.Now().After(expiration) {
+			_, _ = database.Db.Exec("DELETE FROM sessions WHERE session = ?", sessionCookie.Value)
+			next(w, r)
+
+			return
+		}
+		if dbsession != sessionCookie.Value {
+			next(w, r)
+			return
+		}
+		http.Redirect(w, r, "/posts", http.StatusContinue)
+	}
+}
 func Middleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessionCookie, err := r.Cookie("session")
@@ -60,6 +84,7 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 			log.Println("invalid session")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+			return
 		}
 		next(w, r)
 	}

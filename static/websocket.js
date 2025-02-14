@@ -4,6 +4,7 @@ let ws = null;
 export {ws}
 
 export function ConnectWebSocket() {
+    10
     ws = new WebSocket("ws://localhost:8080/ws"); 
 
 
@@ -16,7 +17,7 @@ export function ConnectWebSocket() {
         messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
         
         messageList.appendChild(messageItem); 
-        messageList.scrollTop = messageList.scrollHeight;
+        messageList.scrollBottom = messageList.scrollHeight;
     };
     
     return ws;

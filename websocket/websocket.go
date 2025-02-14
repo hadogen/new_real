@@ -86,7 +86,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		receiverConnections, ok := OnlineConnections.Clients[messageData.Receiver]
 		//check if the user/sender logs out all connections get deleted 
 		//if the receiver is loged out the message should still be added to the database and not shown for that connection but when he fetches the messages all the
-		fmt.Println("remote addres", conn.RemoteAddr().String())
 		if ok {
 			for _, receiverConnection := range receiverConnections {
 				responseMessage := map[string]string{
@@ -106,6 +105,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var temp []*websocket.Conn
+
 	if len(OnlineConnections.Clients[username])==1 {
 		OnlineConnections.Mutex.Lock()
 		delete(OnlineConnections.Clients, username)
