@@ -1,5 +1,7 @@
-import { currentUsername } from './auth.js';
-import { LoadPosts } from './posts.js';
+import { LoadPosts} from './posts.js';
+import {LoadComments} from './comments.js'
+import {currentUsername, currentUser, setCurrentUser, setCurrentUsername} from './auth.js'
+
 
 const sectionTemplates = {
     login: `
@@ -68,4 +70,176 @@ export function ShowSection(sectionId) {
     document.getElementById("navBack").style.display = ["posts", "comments"].includes(sectionId) ? "block" : "none";
     document.getElementById("navLogout").style.display = currentUsername ? "block" : "none";
     document.getElementById("navLogin").style.display = currentUsername ? "none" : "block";
+
+    // if (sectionId === "posts" && document.getElementById("createPostForm")) {
+    //     document.getElementById("createPostForm").addEventListener("submit", async (e) => {
+    //         e.preventDefault();
+    //         await handleCreatePost();
+    //     });
+    // }
+
+    // if (sectionId === "comments" && document.getElementById("createCommentForm")) {
+    //     document.getElementById("createCommentForm").addEventListener("submit", async (e) => {
+    //         e.preventDefault();
+    //         await handleCreateComment();
+    //     });
+    // }
+    if (sectionId==="register" ){
+        document.getElementById("registerForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+        
+            const user = {
+                nickname: document.getElementById("nickname").value,
+                email: document.getElementById("email").value,
+                password: document.getElementById("password").value,
+                age: parseInt(document.getElementById("age").value),
+                gender: document.getElementById("gender").value,
+                first_name: document.getElementById("firstName").value,
+                last_name: document.getElementById("lastName").value,
+            };
+        
+            try {
+                const response = await fetch("/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(user),
+                });
+        
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || "Failed to register");
+                }
+        
+                document.getElementById("message").textContent = result.message || "Registration successful!";
+                ShowSection("login"); 
+            } catch (error) {
+                document.getElementById("message").textContent = error.message;
+            }
+        });
+    }
+    
+    // document.getElementById("logoutButton").addEventListener("click", async () => {
+    //     try {
+    //         const response = await fetch("/logout", { method: "POST" });
+    
+    //         if (!response.ok) {
+    //             throw new Error("Failed to logout");
+    //         }
+    
+    //         currentUser = null;
+    //         currentUsername = null;
+    //         document.getElementById("currentUser").textContent = "";
+    //         ShowSection("login");
+    //         logoutButton.style.display = "none";
+    //         if (window.ws) {
+    //             window.ws.close();
+    //         }
+    
+    //     } catch (error) {
+    //         console.error("Logout error:", error.message);
+    //     }
+    // });
+    if (sectionId ==="login"){
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+    
+        const credentials = {
+            login: document.getElementById("loginId").value,
+            password: document.getElementById("loginPassword").value,
+        };
+        console.log(credentials)
+        try {
+            const response = await fetch("/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(credentials),
+            });
+    
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Failed to login");
+            }
+    
+            setCurrentUser(result.user_id);
+            setCurrentUsername(result.username);
+            document.getElementById("message").textContent = result.message || "Login successful!";
+            LoadPosts()
+            ShowSection("posts");
+            document.getElementById("currentUser").textContent = currentUsername;
+            ConnectWebSocket();
+            fetchActiveUsers();
+            logoutButton.style.display = "block"; 
+        } catch (error) {
+            document.getElementById("message").textContent = error.message;
+        }
+    });
+}
+
+if (sectionId ==="posts"){
+    document.getElementById("createPostForm").addEventListener("submit", async (e) => {
+        e.preventDefault(); 
+    
+        const post = {
+            title: document.getElementById("postTitle").value,
+            content: document.getElementById("postContent").value,
+            category: document.getElementById("postCategory").value,
+        };
+    
+        try {
+            const response = await fetchProtectedResource("/posts/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "User-ID": currentUser,
+                    "Username": currentUsername,
+                },
+                body: JSON.stringify(post),
+            });
+    
+            if (!response) {
+                throw new Error(response.error || "Failed to create post");
+            }
+    
+            document.getElementById("message").textContent = response.message || "Post created successfully!";
+            document.getElementById("createPostForm").reset();
+            LoadPosts(); 
+        } catch (error) {
+            document.getElementById("message").textContent = error.message;
+        }
+    });
+}
+if (sectionId ==="comments"){
+    document.getElementById("createCommentForm").addEventListener("submit", async (e) => {
+        e.preventDefault(); 
+    
+        const comment = {
+            post_id: document.getElementById("commentPostId").value,
+            content: document.getElementById("commentContent").value,
+        };
+    
+        try {
+            const result = await fetchProtectedResource("/comments/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "User-ID": currentUser,
+                    "Username": currentUsername,
+                },
+                body: JSON.stringify(comment),
+            });
+    
+            if (!result) {
+                throw new Error("Failed to create comment");
+            }
+    
+            document.getElementById("message").textContent = result.message || "Comment created successfully!";
+            document.getElementById("createCommentForm").reset();
+            LoadComments(comment.post_id); 
+        } catch (error) {
+            document.getElementById("message").textContent = error.message;
+        }
+    });
+}
+    
 }

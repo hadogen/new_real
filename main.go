@@ -17,7 +17,7 @@ func main() {
 	defer db.Close()
 
 	http.HandleFunc("/register", handlers.RegisterHandler)
-	http.HandleFunc("/login", auth.AutoLog(handlers.LoginHandler)) // access the website directly if the cookie is still valid
+	http.HandleFunc("/login", handlers.LoginHandler) // access the website directly if the cookie is still valid
 	http.HandleFunc("/logout", handlers.LogoutHandler) 
 
 	http.HandleFunc("/posts", auth.Middleware(handlers.GetPostsHandler))

@@ -1,4 +1,8 @@
 import { currentUser, currentUsername } from './auth.js';
+import {fetchActiveUsers} from './websocket.js'
+import  {ShowComments} from  './comments.js';
+import {ShowSection} from './ui.js'
+
 window.fetchProtectedResource = fetchProtectedResource;
 async function fetchProtectedResource(url, options = {}) {
     try {
@@ -31,26 +35,44 @@ export async function LoadPosts() {
         }
 
         const postFeed = document.getElementById("postFeed");
+        // postFeed.innerHTML = "";
+
+
         if (Array.isArray(posts) && posts.length > 0) {
-            postFeed.innerHTML = posts
-                .map(
-                    (post) => `
-                    <div class="post">
-                        <h3>${post.title}</h3>
-                        <p>${post.content}</p>
-                        <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
-                        <div>
-                            <button onclick="LikePost('${post.id}')">Like (${post.likes || 0})</button>
-                            <button onclick="DislikePost('${post.id}')">Dislike (${post.dislikes || 0})</button>
-                        </div>
-                        <button onclick="ShowComments('${post.id}')">View Comments</button>
+            posts.forEach(post => {
+                const postElement = document.createElement("div");
+                postElement.classList.add("post");
+
+                postElement.innerHTML = `
+                    <h3>${post.title}</h3>
+                    <p>${post.content}</p>
+                    <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
+                    <div>
+                        <button class="like-btn" data-post-id="${post.id}">Like (${post.likes || 0})</button>
+                        <button class="dislike-btn" data-post-id="${post.id}">Dislike (${post.dislikes || 0})</button>
                     </div>
-                `
-                )
-                .join("");
-                fetchActiveUsers();
-                ShowSection("posts");
-                console.log("posts loaded")
+                    <button class="show-comments-btn" data-post-id="${post.id}">View Comments</button>
+                `;
+
+                postFeed.appendChild(postElement);
+            });
+
+            // Add event listeners for like, dislike, and comments
+            document.querySelectorAll(".like-btn").forEach(button => {
+                button.addEventListener("click", () => LikePost(button.dataset.postId));
+            });
+
+            document.querySelectorAll(".dislike-btn").forEach(button => {
+                button.addEventListener("click", () => DislikePost(button.dataset.postId));
+            });
+
+            document.querySelectorAll(".show-comments-btn").forEach(button => {
+                button.addEventListener("click", () => ShowComments(button.dataset.postId));
+            });
+
+            // fetchActiveUsers();
+            ShowSection("posts");
+            console.log("Posts loaded");
         } else {
             postFeed.innerHTML = "<p>No posts found.</p>";
             fetchActiveUsers();
@@ -59,6 +81,7 @@ export async function LoadPosts() {
         document.getElementById("message").textContent = error.message;
     }
 }
+
 
 export async function LikePost(postId) {
     try {
@@ -100,37 +123,7 @@ export async function DislikePost(postId) {
     }
 }
 
-document.getElementById("createPostForm").addEventListener("submit", async (e) => {
-    e.preventDefault(); 
 
-    const post = {
-        title: document.getElementById("postTitle").value,
-        content: document.getElementById("postContent").value,
-        category: document.getElementById("postCategory").value,
-    };
-
-    try {
-        const response = await fetchProtectedResource("/posts/create", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "User-ID": currentUser,
-                "Username": currentUsername,
-            },
-            body: JSON.stringify(post),
-        });
-
-        if (!response) {
-            throw new Error(response.error || "Failed to create post");
-        }
-
-        document.getElementById("message").textContent = response.message || "Post created successfully!";
-        document.getElementById("createPostForm").reset();
-        LoadPosts(); 
-    } catch (error) {
-        document.getElementById("message").textContent = error.message;
-    }
-});
 
 
 window.LoadPosts = LoadPosts;
