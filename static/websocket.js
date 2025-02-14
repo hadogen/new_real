@@ -18,7 +18,6 @@ export function ConnectWebSocket() {
         
         messageList.appendChild(messageItem);
         const messageBoxContent = document.getElementById('messageBoxContent');
-
         messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
         fetchMessages(data.sender, currentUsername);
     };
@@ -92,7 +91,8 @@ export function sendPrivateMessage() {
 
         messageElement.textContent = `${currentUsername} [${formattedTime}]: ${message}`;
         messageList.appendChild(messageElement);
-
+        const messageBoxContent = document.getElementById('messageBoxContent');
+        messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
         messageInput.value = '';
         fetchActiveUsers();
     }
@@ -115,7 +115,6 @@ export async function fetchMessages(sender, receiver, older = false) {
         let messages = await fetchProtectedResource(url);
 
         if (!Array.isArray(messages) || messages.length === 0) {
-            // No messages or empty array, stop fetching
             console.log("No more messages to load.");
             isFetching = false;
             return;
@@ -137,8 +136,7 @@ export async function fetchMessages(sender, receiver, older = false) {
             } else {
                 messageList.appendChild(messageElement); 
             }
-
-            if (index === 0) {
+            if (index === messages.length - 1) {
                 lastLoadedTimestamp = msg.created_at; 
             }
         });
@@ -174,5 +172,7 @@ export function loadChatWithUser(receiver) {
     const sender = currentUsername; 
     document.getElementById("selectedUserName").textContent = `Chat with ${receiver}`;
     fetchMessages(sender, receiver);
+    const messageBoxContent = document.getElementById('messageBoxContent');
+    messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
     console.log("Loading chat with", receiver);
 }
