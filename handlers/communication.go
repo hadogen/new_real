@@ -9,14 +9,14 @@ import (
 )
 
 func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET"{
+	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed"})
 		return
 	}
 	sender := r.URL.Query().Get("sender")
 	receiver := r.URL.Query().Get("receiver")
-	before := r.URL.Query().Get("before") 
+	before := r.URL.Query().Get("before")
 
 	if sender == "" || receiver == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -48,7 +48,6 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Println("Error fetching messages:", err)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch messages: " + err.Error()})
 		return
 	}
@@ -72,8 +71,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			"created_at": createdAt,
 		})
 	}
-
-	fmt.Println("Loaded messages:", messages)
+	fmt.Printf("length of messages : %d\n", len(messages))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

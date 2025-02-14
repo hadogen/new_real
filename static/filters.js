@@ -75,7 +75,7 @@ export async function FilterByCreatedPosts() {
     }
 }
 
-async function FilterByLikedPosts() {
+export async function FilterByLikedPosts() {
     if (!currentUser) {
         document.getElementById("message").textContent = "You must be logged in to view liked posts.";
         return;

@@ -95,7 +95,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 					"time":    messageData.Time,
 				}
 				message, _:= json.Marshal(responseMessage)
-				err :=receiverConnection.WriteMessage(websocket.TextMessage, message)
+				err := receiverConnection.WriteMessage(websocket.TextMessage, message)
 				if err != nil {
 					log.Println("error sending message")
 				}

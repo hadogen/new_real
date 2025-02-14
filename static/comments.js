@@ -1,5 +1,39 @@
 import { currentUser, currentUsername } from './auth.js';
+import {ShowSection} from './ui.js';
+export function ShowComments(postId) {
+    ShowSection("comments");
+    document.getElementById("commentPostId").value = postId;
+    LoadComments(postId);
+}
+export async function handleCreateComment(){
+    
+    const comment = {
+        post_id: document.getElementById("commentPostId").value,
+        content: document.getElementById("commentContent").value,
+    };
 
+    try {
+        const result = await fetchProtectedResource("/comments/create", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "User-ID": currentUser,
+                "Username": currentUsername,
+            },
+            body: JSON.stringify(comment),
+        });
+
+        if (!result) {
+            throw new Error("Failed to create comment");
+        }
+
+        document.getElementById("message").textContent = result.message || "Comment created successfully!";
+        document.getElementById("createCommentForm").reset();
+        LoadComments(comment.post_id); 
+    } catch (error) {
+        document.getElementById("message").textContent = error.message;
+    }
+}
 
 export async function LoadComments(postId) {
     try {

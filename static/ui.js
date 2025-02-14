@@ -1,6 +1,9 @@
-import { LoadPosts} from './posts.js';
-import {LoadComments} from './comments.js'
-import {currentUsername, currentUser, setCurrentUser, setCurrentUsername} from './auth.js'
+
+import { handleCreateComment} from './comments.js'
+import { handleCreatePost} from './posts.js'
+import {currentUsername, currentUser, setCurrentUser, setCurrentUsername, handleLogin, handleRegister} from './auth.js'
+import {FilterByCategory, FilterByCreatedPosts, FilterByLikedPosts} from './filters.js'
+import { sendPrivateMessage} from './websocket.js'
 
 
 const sectionTemplates = {
@@ -33,9 +36,10 @@ const sectionTemplates = {
             </form>
         </div>
     `,
-    posts: `
-        <div class="section" id="posts">
-            <h2>Posts</h2>
+    posts:  `
+    <div class="section" id="posts">
+        <h2>Posts</h2>
+        <div class="post-controls">
             <form id="createPostForm">
                 <input type="text" id="postTitle" placeholder="Title" required>
                 <textarea id="postContent" placeholder="Content" required></textarea>
@@ -46,9 +50,26 @@ const sectionTemplates = {
                 </select>
                 <button type="submit">Create Post</button>
             </form>
-            <div id="postFeed"></div>
+            
+                <div>
+                <label for="categoryFilter">Filter by Category:</label>
+                <select id="categoryFilter">
+                    <option value="">All</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Science">Science</option>
+                    <option value="Art">Art</option>
+                    <option value="Music">Music</option>
+                    <option value="Sports">Sports</option>
+                    <!-- Add more categories as needed -->
+                </select>
+                <button id="btn-filter">Apply</button>
+                <button id="btn-filter-created">My Posts</button>
+                <button id="btn-filter-liked">Liked Posts</button>
+            </div>
         </div>
-    `,
+        <div id="postFeed"></div>
+    </div>
+`,
     comments: `
         <div class="section" id="comments">
             <h2>Comments</h2>
@@ -62,184 +83,78 @@ const sectionTemplates = {
     `,
 };
 
+
+
+
+
 export function ShowSection(sectionId) {
     const dynamicContent = document.getElementById("dynamicContent");
     dynamicContent.innerHTML = sectionTemplates[sectionId] || "<p>Section not found.</p>";
 
-    // Update navigation visibility
-    document.getElementById("navBack").style.display = ["posts", "comments"].includes(sectionId) ? "block" : "none";
-    document.getElementById("navLogout").style.display = currentUsername ? "block" : "none";
-    document.getElementById("navLogin").style.display = currentUsername ? "none" : "block";
+    const navBack = document.getElementById("navBack");
+    const navLogout = document.getElementById("navLogout");
+    const navLogin = document.getElementById("navLogin");
+    
+    if (navBack) navBack.style.display = ["posts", "comments"].includes(sectionId) ? "block" : "none";
+    if (navLogout) navLogout.style.display = currentUsername ? "block" : "none";
+    if (navLogin) navLogin.style.display = currentUsername ? "none" : "block";
 
-    // if (sectionId === "posts" && document.getElementById("createPostForm")) {
-    //     document.getElementById("createPostForm").addEventListener("submit", async (e) => {
-    //         e.preventDefault();
-    //         await handleCreatePost();
-    //     });
-    // }
+    setupEventListeners(sectionId);
+}
 
-    // if (sectionId === "comments" && document.getElementById("createCommentForm")) {
-    //     document.getElementById("createCommentForm").addEventListener("submit", async (e) => {
-    //         e.preventDefault();
-    //         await handleCreateComment();
-    //     });
-    // }
-    if (sectionId==="register" ){
-        document.getElementById("registerForm").addEventListener("submit", async (e) => {
+function setupEventListeners(sectionId) {
+    // Register form
+    const registerForm = document.getElementById("registerForm");
+    if (sectionId === "register" && registerForm) {
+        registerForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-        
-            const user = {
-                nickname: document.getElementById("nickname").value,
-                email: document.getElementById("email").value,
-                password: document.getElementById("password").value,
-                age: parseInt(document.getElementById("age").value),
-                gender: document.getElementById("gender").value,
-                first_name: document.getElementById("firstName").value,
-                last_name: document.getElementById("lastName").value,
-            };
-        
-            try {
-                const response = await fetch("/register", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(user),
-                });
-        
-                const result = await response.json();
-                if (!response.ok) {
-                    throw new Error(result.error || "Failed to register");
-                }
-        
-                document.getElementById("message").textContent = result.message || "Registration successful!";
-                ShowSection("login"); 
-            } catch (error) {
-                document.getElementById("message").textContent = error.message;
-            }
+            await handleRegister(e);
         });
     }
-    
-    // document.getElementById("logoutButton").addEventListener("click", async () => {
-    //     try {
-    //         const response = await fetch("/logout", { method: "POST" });
-    
-    //         if (!response.ok) {
-    //             throw new Error("Failed to logout");
-    //         }
-    
-    //         currentUser = null;
-    //         currentUsername = null;
-    //         document.getElementById("currentUser").textContent = "";
-    //         ShowSection("login");
-    //         logoutButton.style.display = "none";
-    //         if (window.ws) {
-    //             window.ws.close();
-    //         }
-    
-    //     } catch (error) {
-    //         console.error("Logout error:", error.message);
-    //     }
-    // });
-    if (sectionId ==="login"){
 
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-    
-        const credentials = {
-            login: document.getElementById("loginId").value,
-            password: document.getElementById("loginPassword").value,
-        };
-        console.log(credentials)
-        try {
-            const response = await fetch("/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(credentials),
-            });
-    
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.error || "Failed to login");
-            }
-    
-            setCurrentUser(result.user_id);
-            setCurrentUsername(result.username);
-            document.getElementById("message").textContent = result.message || "Login successful!";
-            LoadPosts()
-            ShowSection("posts");
-            document.getElementById("currentUser").textContent = currentUsername;
-            ConnectWebSocket();
-            fetchActiveUsers();
-            logoutButton.style.display = "block"; 
-        } catch (error) {
-            document.getElementById("message").textContent = error.message;
-        }
-    });
+    // Login form
+    const loginForm = document.getElementById("loginForm");
+    if (sectionId === "login" && loginForm) {
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await handleLogin(e);
+        });
+    }
+
+    // Create post form
+    const createPostForm = document.getElementById("createPostForm");
+    const filter = document.getElementById("btn-filter")
+    const filterLiked = document.getElementById("btn-filter-liked")
+    const filterCreated = document.getElementById("btn-filter-created")
+    if (sectionId === "posts" && createPostForm) {
+        createPostForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await handleCreatePost(e);
+        });
+        filter.addEventListener("click", async ()=>{
+            await FilterByCategory()
+        } )
+        filterLiked.addEventListener("click", async ()=>{
+            await FilterByLikedPosts()
+        } )
+        filterCreated.addEventListener("click", async ()=>{
+            await FilterByCreatedPosts()
+        } )
+        document.getElementById("sendMessageButton").addEventListener("click",  ()=>{
+            sendPrivateMessage();
+        })
+    }
+
+    // Create comment form
+    const createCommentForm = document.getElementById("createCommentForm");
+    if (sectionId === "comments" && createCommentForm) {
+        createCommentForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await handleCreateComment(e);
+        });
+    }
 }
 
-if (sectionId ==="posts"){
-    document.getElementById("createPostForm").addEventListener("submit", async (e) => {
-        e.preventDefault(); 
-    
-        const post = {
-            title: document.getElementById("postTitle").value,
-            content: document.getElementById("postContent").value,
-            category: document.getElementById("postCategory").value,
-        };
-    
-        try {
-            const response = await fetchProtectedResource("/posts/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "User-ID": currentUser,
-                    "Username": currentUsername,
-                },
-                body: JSON.stringify(post),
-            });
-    
-            if (!response) {
-                throw new Error(response.error || "Failed to create post");
-            }
-    
-            document.getElementById("message").textContent = response.message || "Post created successfully!";
-            document.getElementById("createPostForm").reset();
-            LoadPosts(); 
-        } catch (error) {
-            document.getElementById("message").textContent = error.message;
-        }
-    });
-}
-if (sectionId ==="comments"){
-    document.getElementById("createCommentForm").addEventListener("submit", async (e) => {
-        e.preventDefault(); 
-    
-        const comment = {
-            post_id: document.getElementById("commentPostId").value,
-            content: document.getElementById("commentContent").value,
-        };
-    
-        try {
-            const result = await fetchProtectedResource("/comments/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "User-ID": currentUser,
-                    "Username": currentUsername,
-                },
-                body: JSON.stringify(comment),
-            });
-    
-            if (!result) {
-                throw new Error("Failed to create comment");
-            }
-    
-            document.getElementById("message").textContent = result.message || "Comment created successfully!";
-            document.getElementById("createCommentForm").reset();
-            LoadComments(comment.post_id); 
-        } catch (error) {
-            document.getElementById("message").textContent = error.message;
-        }
-    });
-}
-    
-}
+
+
+

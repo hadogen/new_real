@@ -4,20 +4,23 @@ let ws = null;
 export {ws}
 
 export function ConnectWebSocket() {
-    10
     ws = new WebSocket("ws://localhost:8080/ws"); 
 
 
     ws.onmessage = function(event) {
-        const data = JSON.parse(event.data);
         const messageList = document.getElementById('messageList');
+        if (!messageList) return;
+        const data = JSON.parse(event.data);
         const messageItem = document.createElement('li');
         const timeFormatted = new Date(data.time).toLocaleTimeString(); 
         messageItem.classList.add('message-item');
         messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
         
-        messageList.appendChild(messageItem); 
-        messageList.scrollBottom = messageList.scrollHeight;
+        messageList.appendChild(messageItem);
+        const messageBoxContent = document.getElementById('messageBoxContent');
+
+        messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
+        fetchMessages(data.sender, currentUsername);
     };
     
     return ws;
@@ -33,6 +36,8 @@ export async function fetchActiveUsers() {
         }
   
         const userList = document.getElementById('userList');
+        if (!userList) return; 
+
         userList.innerHTML = '';
         console.log("Active users:", users);
 
@@ -87,6 +92,7 @@ export function sendPrivateMessage() {
 
         messageElement.textContent = `${currentUsername} [${formattedTime}]: ${message}`;
         messageList.appendChild(messageElement);
+
         messageInput.value = '';
         fetchActiveUsers();
     }
@@ -108,8 +114,11 @@ export async function fetchMessages(sender, receiver, older = false) {
     try {
         let messages = await fetchProtectedResource(url);
 
-        if (!Array.isArray(messages)) {
-            messages = [];
+        if (!Array.isArray(messages) || messages.length === 0) {
+            // No messages or empty array, stop fetching
+            console.log("No more messages to load.");
+            isFetching = false;
+            return;
         }
 
         const messageList = document.getElementById("messageList");
@@ -117,7 +126,7 @@ export async function fetchMessages(sender, receiver, older = false) {
         if (!older) {
             messageList.innerHTML = ""; 
         }
-
+        console.log(messages)
         messages.reverse().forEach((msg, index) => {
             const messageElement = document.createElement("li");
             const timeFormatted = new Date(msg.created_at).toLocaleTimeString();
@@ -133,22 +142,34 @@ export async function fetchMessages(sender, receiver, older = false) {
                 lastLoadedTimestamp = msg.created_at; 
             }
         });
-
         isFetching = false;
     } catch (error) {
         console.error("Error fetching messages:", error);
         isFetching = false;
     }
 }
-document.getElementById('messageList').addEventListener('scroll', function () {
-    if (this.scrollTop === 0) { 
-        console.log("loading another 10 messages");
-        fetchMessages(currentUsername, selectedUser, true);
+
+
+document.getElementById('messageBoxContent').addEventListener('scroll', debounce(function () {
+    const messageBoxContent = document.getElementById('messageBoxContent');
+    
+    if (isFetching) {
+        return;
     }
-});
 
+    if (messageBoxContent.scrollTop === 0) { 
+        console.log("loading another 10 messages");
+        fetchMessages(currentUsername, selectedUser, true); 
+    }
+}, 200)); 
 
-
+function debounce(func, delay) {
+    let timer;
+    return function() {
+        clearTimeout(timer);
+        timer = setTimeout(func, delay);
+    };
+}
 export function loadChatWithUser(receiver) {
     const sender = currentUsername; 
     document.getElementById("selectedUserName").textContent = `Chat with ${receiver}`;
