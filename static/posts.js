@@ -1,5 +1,5 @@
 import { currentUser, currentUsername } from './auth.js';
-import {fetchActiveUsers} from './websocket.js'
+import {fetchAllUsers} from './websocket.js'
 import  {ShowComments} from  './comments.js';
 import {ShowSection} from './ui.js'
 
@@ -42,11 +42,12 @@ async function fetchProtectedResource(url, options = {}) {
         
         if (response.status === 401) {
             ShowSection("login");
-            // document.getElementById("currentUser").textContent = "";
-            // document.getElementById("message").textContent = "Please log in";
+            document.getElementById("message").textContent = "Please log in";
             return null;
         }
-
+        if (response.status === 204){
+            return null
+        }
         return await response.json();
     } catch (error) {
         console.error("Error fetching resource:", error);
@@ -93,7 +94,7 @@ export async function LoadPosts(scroll) {
         } else {
             postFeed.innerHTML = "<p>No posts found.</p>";
         }
-        fetchActiveUsers();
+        fetchAllUsers()
     } catch (error) {
         const messageElement = document.getElementById("message");
         if (messageElement) {

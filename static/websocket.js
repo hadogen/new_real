@@ -1,73 +1,127 @@
 import { currentUsername } from './auth.js';
 window.sendPrivateMessage = sendPrivateMessage;
-let ws = null;
-export {ws}
 
+ let ws = null
 export function ConnectWebSocket() {
-    ws = new WebSocket("ws://localhost:8080/ws"); 
+     ws = new WebSocket("ws://localhost:8080/ws"); 
 
+    console.log("ws connected", ws)
 
+    ws.onopen = ()=> {
+        console.log("websocket connection opened")
+    }
+    ws.onclose =()=> {
+        console.log("websocket closed succesfully")
+    }
+    ws.onerror = (e)=>{
+        console.log("websocket error :" , e)
+    }
     ws.onmessage = function(event) {
         const messageList = document.getElementById('messageList');
+        const messageBoxContent = document.getElementById('messageBoxContent');
+
         if (!messageList) return;
+
         const data = JSON.parse(event.data);
         const messageItem = document.createElement('li');
         const timeFormatted = new Date(data.time).toLocaleTimeString(); 
+
         messageItem.classList.add('message-item');
         messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
-        
         messageList.appendChild(messageItem);
-        const messageBoxContent = document.getElementById('messageBoxContent');
         messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
+        
         fetchMessages(data.sender, currentUsername);
+
+        //create notification
+        const notification = document.createElement()
     };
-    
-    return ws;
 }
 
 let selectedUser = null; 
 
-export async function fetchActiveUsers() {
-    try {
-        const users = await fetchProtectedResource('/online-users');
-        if (!users) {
-            throw new Error(`HTTP error! Status: ${users.status}`);
-        }
-  
-        const userList = document.getElementById('userList');
-        if (!userList) return; 
+// export async function fetchActiveUsers() {
+//     try {
+//         const users = await fetchProtectedResource('/online-users');
+//         const userList = document.getElementById('userList');
+//         if (!users) {
+//             userList.innerHTML = '';
+//             return
+//         }
+//         userList.innerHTML = '';
+//         console.log("Active users:", users);
 
-        userList.innerHTML = '';
-        console.log("Active users:", users);
+//         const otherUsers = users.filter(user => user !== currentUsername);
+    
+//         otherUsers.forEach(user => {
+//             const userItem = document.createElement('li');
+//             userItem.classList.add('user-item');
+//             userItem.textContent = user;
+
+//             userItem.addEventListener('click', () => {
+//                 selectedUser = user;
+//                 loadChatWithUser(selectedUser);
+//                 document.getElementById('messageBox').style.display = 'none' ? 'block' : 'none';
+//                 console.log(document.getElementById("messageBox").style.display)
+//                 document.getElementById('selectedUserName').textContent = selectedUser;
+//             });
+//             userList.appendChild(userItem);
+//         });
+//     } catch (error) {
+//         console.error('Error fetching active users:', error);
+//     }
+// }
+export async function fetchAllUsers() {
+    try {
+        const users = await fetchProtectedResource("/all-users");
+        const activeUsers = await fetchProtectedResource("/online-users");
+        
+        if (!users || !activeUsers) {
+            throw new Error(`Error fetching users`);
+        }
 
         const otherUsers = users.filter(user => user !== currentUsername);
-    
-        otherUsers.forEach(user => {
+
+        const userMessages = await Promise.all(otherUsers.map(async user => {
+            const messages = await fetchProtectedResource(`/private-messages?sender=${user}&receiver=${currentUsername}&limit=1`);
+            return { user, lastMessage: messages[0] || null };
+        }));
+
+        userMessages.sort((a, b) => {
+            if (a.lastMessage && b.lastMessage) {
+                return new Date(b.lastMessage.created_at) - new Date(a.lastMessage.created_at);
+            } else if (a.lastMessage) {
+                return -1;
+            } else if (b.lastMessage) {
+                return 1;
+            } else {
+                return a.user.localeCompare(b.user);
+            }
+        });
+
+        const userList = document.getElementById('userList');
+        userList.innerHTML = '';
+
+        userMessages.forEach(({ user }) => {
             const userItem = document.createElement('li');
             userItem.classList.add('user-item');
             userItem.textContent = user;
 
+            if (activeUsers.includes(user)) {
+                userItem.textContent += ' (active)';
+            }
+
             userItem.addEventListener('click', () => {
                 selectedUser = user;
                 loadChatWithUser(selectedUser);
-                document.getElementById('messageBox').style.display = 'block';
+                document.getElementById('messageBox').style.display = 'none' ? 'block' : 'none';
+                console.log(document.getElementById("messageBox").style.display);
                 document.getElementById('selectedUserName').textContent = selectedUser;
             });
             userList.appendChild(userItem);
         });
     } catch (error) {
-        console.error('Error fetching active users:', error);
-    }
-}
-export async function fetchAllUsers() {
-    try {
-        const users = fetchProtectedResource("/all-users");
-        if (!users){
-            throw new Error(`all users error status : ${users.status}`)
-        }
-    }
-    catch (error){
-        console.log(error)
+        console.error('Error fetching users:', error);
     }
 }
 export function sendPrivateMessage() {
@@ -94,7 +148,7 @@ export function sendPrivateMessage() {
         const messageBoxContent = document.getElementById('messageBoxContent');
         messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
         messageInput.value = '';
-        fetchActiveUsers();
+        fetchAllUsers()    
     }
 }
 
@@ -176,3 +230,5 @@ export function loadChatWithUser(receiver) {
     messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
     console.log("Loading chat with", receiver);
 }
+
+export {ws}

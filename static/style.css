@@ -83,6 +83,7 @@ nav button:hover {
 
 /* Message Box */
 #messageBox {
+  display: none;
   position: fixed;
   bottom: 1rem;
   right: 1rem;
@@ -203,3 +204,6 @@ button:hover {
   margin-left: 1rem;
   padding: 1rem;
 }
+
+
+

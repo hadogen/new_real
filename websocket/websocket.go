@@ -50,6 +50,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	OnlineConnections.Mutex.Lock()
 	OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username], conn)
 	OnlineConnections.Mutex.Unlock()
+	fmt.Println("username added to connections"+ username)
 	
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -130,7 +131,13 @@ func GetActiveUsers(w http.ResponseWriter, r *http.Request) {
 	for username := range OnlineConnections.Clients {
 		activeUsers = append(activeUsers, username)
 	}
-
+	if len(activeUsers)<=0{
+		fmt.Println("no active users")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNoContent)
+		json.NewEncoder(w).Encode(map[string]string{"message": "No Active Users"})
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(activeUsers)

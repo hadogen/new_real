@@ -25,13 +25,17 @@ func main() {
 	http.HandleFunc("/posts/like", auth.Middleware(handlers.LikePostHandler))
 	http.HandleFunc("/posts/category", auth.Middleware(handlers.GetPostsByCategoryHandler))
 	http.HandleFunc("/posts/created", auth.Middleware(handlers.GetPostsByUserHandler))
+	
 	http.HandleFunc("/posts/liked", auth.Middleware(handlers.GetLikedPostsHandler))
 	http.HandleFunc("/posts/dislike", auth.Middleware(handlers.DislikePostHandler))
     
+
+
 	http.HandleFunc("/comments/create", auth.Middleware(handlers.CreateCommentHandler))
 	http.HandleFunc("/comments", auth.Middleware(handlers.GetCommentsHandler))
 	http.HandleFunc("/comments/like", auth.Middleware(handlers.LikeCommentHandler))
 	http.HandleFunc("/comments/dislike", auth.Middleware(handlers.DislikeCommentHandler))
+
 
 	http.HandleFunc("/private-messages", auth.Middleware(handlers.GetPrivateMessagesHandler))
 	http.HandleFunc("/online-users", auth.Middleware(websocket.GetActiveUsers))

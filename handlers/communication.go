@@ -17,6 +17,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	sender := r.URL.Query().Get("sender")
 	receiver := r.URL.Query().Get("receiver")
 	before := r.URL.Query().Get("before")
+	// limit := r.URL.Query().Get("limit")
 
 	if sender == "" || receiver == "" {
 		w.WriteHeader(http.StatusBadRequest)
