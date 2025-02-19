@@ -1,9 +1,11 @@
 import { ShowSection } from "./ui.js";
 import {ConnectWebSocket, fetchAllUsers } from "./websocket.js";
 import {LoadPosts} from './posts.js'
+import { getCurrentUsername } from "./utils.js";
 import{ ws} from './websocket.js'
 
 export async function handleLogin(){
+    await logout()
     const credentials = {
         login: document.getElementById("loginId").value,
         password: document.getElementById("loginPassword").value,
@@ -32,7 +34,7 @@ export async function handleLogin(){
 }
 
 export async function  handleRegister(){
-        
+    await logout()
     const user = {
         nickname: document.getElementById("nickname").value,
         email: document.getElementById("email").value,

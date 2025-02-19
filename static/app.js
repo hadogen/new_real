@@ -13,6 +13,7 @@ async function checkSession() {
             fetchAllUsers();
             document.getElementById("navLogout").style.display = "block";
             document.getElementById("navLogin").style.display = "none";
+            document.getElementById("navRegister").style.display = "none";
             return;
         }
         console.log("Session invalid before login");
