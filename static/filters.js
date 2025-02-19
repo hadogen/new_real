@@ -1,8 +1,7 @@
-
-
 import { currentUser } from './auth.js';
 import { LikePost, DislikePost } from './posts.js'; 
 import { ShowComments } from './comments.js';
+import { setupPostEventListeners } from './posts.js';
 
 window.LikePost = LikePost; 
 window.DislikePost = DislikePost;
@@ -27,12 +26,13 @@ export async function FilterByCategory() {
                     <p>${post.content}</p>
                     <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
                     <div>
-                        <button onclick="LikePost('${post.id}')">Like (${post.likes || 0})</button>
-                        <button onclick="DislikePost('${post.id}')">Dislike (${post.dislikes || 0})</button>
+                        <button class="like-btn" data-post-id="${post.id}">Like (${post.likes || 0})</button>
+                        <button class="dislike-btn" data-post-id="${post.id}">Dislike (${post.dislikes || 0})</button>
                     </div>
-                    <button onclick="ShowComments('${post.id}')">View Comments</button>
+                    <button class="show-comments-btn" data-post-id="${post.id}">View Comments</button>
                 </div>
             `).join("");
+            setupPostEventListeners();
         } else {
             postFeed.innerHTML = "<p>No posts found.</p>";
         }
@@ -61,12 +61,13 @@ export async function FilterByCreatedPosts() {
                     <p>${post.content}</p>
                     <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
                     <div>
-                        <button onclick="LikePost('${post.id}')">Like (${post.likes || 0})</button>
-                        <button onclick="DislikePost('${post.id}')">Dislike (${post.dislikes || 0})</button>
+                        <button class="like-btn" data-post-id="${post.id}">Like (${post.likes || 0})</button>
+                        <button class="dislike-btn" data-post-id="${post.id}">Dislike (${post.dislikes || 0})</button>
                     </div>
-                    <button onclick="ShowComments('${post.id}')">View Comments</button>
+                    <button class="show-comments-btn" data-post-id="${post.id}">View Comments</button>
                 </div>
             `).join("");
+            setupPostEventListeners();
         } else {
             postFeed.innerHTML = "<p>No posts found.</p>";
         }
@@ -89,22 +90,19 @@ export async function FilterByLikedPosts() {
 
         const postFeed = document.getElementById("postFeed");
         if (Array.isArray(posts) && posts.length > 0) {
-            postFeed.innerHTML = posts
-                .map(
-                    (post) => `
-                    <div class="post">
-                        <h3>${post.title}</h3>
-                        <p>${post.content}</p>
-                        <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
-                        <div>
-                            <button onclick="LikePost('${post.id}')">Like (${post.likes || 0})</button>
-                            <button onclick="DislikePost('${post.id}')">Dislike (${post.dislikes || 0})</button>
-                        </div>
-                        <button onclick="ShowComments('${post.id}')">View Comments</button>
+            postFeed.innerHTML = posts.map(post => `
+                <div class="post">
+                    <h3>${post.title}</h3>
+                    <p>${post.content}</p>
+                    <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
+                    <div>
+                        <button class="like-btn" data-post-id="${post.id}">Like (${post.likes || 0})</button>
+                        <button class="dislike-btn" data-post-id="${post.id}">Dislike (${post.dislikes || 0})</button>
                     </div>
-                `
-                )
-                .join("");
+                    <button class="show-comments-btn" data-post-id="${post.id}">View Comments</button>
+                </div>
+            `).join("");
+            setupPostEventListeners();
         } else {
             postFeed.innerHTML = "<p>No posts found.</p>";
         }

@@ -30,9 +30,14 @@
     </div>
 
     <!-- Private Message Box -->
-    <div id="messageBox">
-        <h3>Send a Private Message</h3>
-        <h4 id="selectedUserName"></h4>
+    <div id="messageBox" class="collapsed">
+        <div id="messageBoxHeader">
+            <div>
+                <h3>Send a Private Message</h3>
+                <h4 id="selectedUserName"></h4>
+            </div>
+            <button id="toggleMessageBox">▼</button>
+        </div>
         <div id="messageBoxContent">
             <ul id="messageList"></ul>
         </div>

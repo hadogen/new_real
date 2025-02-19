@@ -3,9 +3,6 @@ import {ConnectWebSocket, fetchAllUsers } from "./websocket.js";
 import {LoadPosts} from './posts.js'
 import{ ws} from './websocket.js'
 
-let currentUser = null;
-let currentUsername = null;
-
 export async function handleLogin(){
     const credentials = {
         login: document.getElementById("loginId").value,
@@ -24,14 +21,15 @@ export async function handleLogin(){
             throw new Error(result.error || "Failed to login");
         }
         ConnectWebSocket();
-        setCurrentUser(result.user_id);
-        setCurrentUsername(result.username);
-        document.getElementById("message").textContent = result.message || "Login successful!";
         ShowSection("posts");
-        LoadPosts()
-        document.getElementById("currentUser").textContent = currentUsername;
+        LoadPosts();
         fetchAllUsers();
-        logoutButton.style.display = "block"; 
+        document.getElementById("navLogout").style.display = "block";
+        document.getElementById("navLogin").style.display = "none";
+        if (result.username) {
+            document.getElementById("currentUser").textContent = result.username;
+        }
+        document.getElementById("message").textContent = result.message || "Login successful!";
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }
@@ -67,13 +65,7 @@ export async function  handleRegister(){
         document.getElementById("message").textContent = error.message;
     }
 }
-function setCurrentUser(userId) {
-    currentUser = userId;
-}
 
-function setCurrentUsername(username) {
-    currentUsername = username;
-}
 export async function logout() {
     const response = await fetch("/logout", {
         method: "POST",
@@ -90,4 +82,5 @@ export async function logout() {
         document.getElementById("message").textContent = "Logout failed";
     }
 }
-export { currentUser, currentUsername, setCurrentUser, setCurrentUsername };
+
+export { handleLogin, handleRegister, logout };

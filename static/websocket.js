@@ -114,8 +114,9 @@ export async function fetchAllUsers() {
             userItem.addEventListener('click', () => {
                 selectedUser = user;
                 loadChatWithUser(selectedUser);
-                document.getElementById('messageBox').style.display = 'none' ? 'block' : 'none';
-                console.log(document.getElementById("messageBox").style.display);
+                const messageBox = document.getElementById('messageBox');
+                messageBox.classList.remove('collapsed');
+                document.getElementById('toggleMessageBox').textContent = '▼';
                 document.getElementById('selectedUserName').textContent = selectedUser;
             });
             userList.appendChild(userItem);
@@ -124,7 +125,69 @@ export async function fetchAllUsers() {
         console.error('Error fetching users:', error);
     }
 }
-export function sendPrivateMessage() {
+
+async function isUserActive(username) {
+    try {
+        const activeUsers = await fetchProtectedResource("/online-users");
+        return activeUsers.includes(username);
+    } catch (error) {
+        console.error('Error checking user status:', error);
+        return false;
+    }
+}
+
+export async function loadChatWithUser(receiver) {
+    try {
+        const isActive = await isUserActive(receiver);
+        const messageBox = document.getElementById('messageBox');
+        const sendButton = document.getElementById('sendMessageButton');
+        const messageBoxContent = document.getElementById('messageBoxContent');
+        const messageInput = document.getElementById('messageInput');
+        
+        document.getElementById("selectedUserName").textContent = `Chat with ${receiver}`;
+        
+        if (!isActive) {
+            // Handle inactive user
+            sendButton.disabled = true;
+            sendButton.classList.add('tooltip');
+            sendButton.setAttribute('data-tooltip', 'User is not currently active');
+            messageBox.classList.add('collapsed');
+            document.getElementById('toggleMessageBox').textContent = '▲';
+            messageBoxContent.style.display = 'none';
+            messageInput.style.display = 'none';
+            sendButton.style.display = 'none';
+            return; // Exit early without fetching messages
+        }
+
+        // Handle active user
+        sendButton.disabled = false;
+        sendButton.classList.remove('tooltip');
+        sendButton.removeAttribute('data-tooltip');
+        messageBox.classList.remove('collapsed');
+        document.getElementById('toggleMessageBox').textContent = '▼';
+        messageBoxContent.style.display = 'block';
+        messageInput.style.display = 'block';
+        sendButton.style.display = 'block';
+        
+        // Only fetch messages if user is active
+        fetchMessages(currentUsername, receiver);
+        messageBoxContent.scrollTop = messageBoxContent.scrollHeight;
+        
+    } catch (error) {
+        console.error('Error loading chat:', error);
+    }
+}
+
+export async function sendPrivateMessage() {
+    // Double-check if user is still active before sending
+    if (!await isUserActive(selectedUser)) {
+        const sendButton = document.getElementById('sendMessageButton');
+        sendButton.disabled = true;
+        sendButton.classList.add('tooltip');
+        sendButton.setAttribute('data-tooltip', 'User is not currently active');
+        return;
+    }
+
     const messageInput = document.getElementById('messageInput');
     const message = messageInput.value;
 
@@ -222,13 +285,19 @@ function debounce(func, delay) {
         timer = setTimeout(func, delay);
     };
 }
-export function loadChatWithUser(receiver) {
-    const sender = currentUsername; 
-    document.getElementById("selectedUserName").textContent = `Chat with ${receiver}`;
-    fetchMessages(sender, receiver);
-    const messageBoxContent = document.getElementById('messageBoxContent');
-    messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
-    console.log("Loading chat with", receiver);
-}
 
 export {ws}
+
+// Add this near the top of the file with other initialization code
+document.getElementById('toggleMessageBox').addEventListener('click', () => {
+    const messageBox = document.getElementById('messageBox');
+    const toggleButton = document.getElementById('toggleMessageBox');
+    
+    if (messageBox.classList.contains('collapsed')) {
+        messageBox.classList.remove('collapsed');
+        toggleButton.textContent = '▼';
+    } else {
+        messageBox.classList.add('collapsed');
+        toggleButton.textContent = '▲';
+    }
+});

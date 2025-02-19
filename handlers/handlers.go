@@ -103,51 +103,46 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid password"})
 		return
 	}
+
+	// Create session
 	session := uuid.New().String()
 	expiration := time.Now().Add(60 * time.Minute)
+
 	_, err = database.Db.Exec(`
-		DELETE FROM sessions WHERE nickname = ?
-	`, user.Nickname)
+        DELETE FROM sessions WHERE nickname = ?
+    `, user.Nickname)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete session"})
 		fmt.Println("failed to delete session")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:    "session",
-		Value:   session,
-		Expires: expiration,
-		Path:    "/",
-	})
-	fmt.Println("Session created:", session)
 
+	// Set session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    session,
+		Expires:  expiration,
+		Path:     "/",
+		HttpOnly: true, // Prevents JavaScript access to the cookie
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	// Store session in database
 	_, err = database.Db.Exec(`
-		INSERT INTO sessions (session, nickname , expiration)
-		VALUES (?, ?, ?)
-	`, session, user.Nickname, expiration)
+        INSERT INTO sessions (session, nickname, expiration)
+        VALUES (?, ?, ?)
+    `, session, user.Nickname, expiration)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create session"})
 		fmt.Println("failed to create session")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:  "user_id",
-		Value: user.ID,
-		Path:  "/",
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:  "username",
-		Value: user.Nickname,
-		Path:  "/",
-	})
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
-		"message":  "Login successful",
-		"user_id":  user.ID,
-		"username": user.Nickname,
+		"message": "Login successful",
 	})
 }
 
@@ -171,8 +166,6 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{Name: "session", Value: "", Path: "/", MaxAge: -1})
-	http.SetCookie(w, &http.Cookie{Name: "user_id", Value: "", Path: "/", MaxAge: -1})
-	http.SetCookie(w, &http.Cookie{Name: "username", Value: "", Path: "/", MaxAge: -1})
 
 	websocket.OnlineConnections.Mutex.Lock()
 
@@ -201,23 +194,38 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed"})
 		return
 	}
+
+	// Get username from session
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
+	if err != nil {
+		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	// Get user ID from database
+	var userID string
+	err = database.Db.QueryRow("SELECT id FROM users WHERE nickname = ?", username).Scan(&userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to get user ID"})
+		return
+	}
+
 	var post struct {
 		Title    string `json:"title"`
 		Content  string `json:"content"`
 		Category string `json:"category"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&post)
+	err = json.NewDecoder(r.Body).Decode(&post)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
-		return
-	}
-
-	userID := r.Header.Get("User-ID")
-	username := r.Header.Get("Username")
-	if userID == "" || username == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
@@ -226,7 +234,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = database.Db.Exec(`
         INSERT INTO posts (id, user_id, username, title, content, category, created_at)
-        VALUES (?, ?, ?, ?, ?, ?,?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `, postID, userID, username, post.Title, post.Content, post.Category, createdAt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

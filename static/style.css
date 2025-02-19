@@ -83,7 +83,6 @@ nav button:hover {
 
 /* Message Box */
 #messageBox {
-  display: none;
   position: fixed;
   bottom: 1rem;
   right: 1rem;
@@ -92,6 +91,32 @@ nav button:hover {
   border-radius: 8px;
   padding: 1rem;
   color: white;
+}
+
+#messageBox.collapsed {
+  height: 40px; /* Just enough for the header and toggle button */
+  overflow: hidden;
+}
+
+#messageBoxHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+#toggleMessageBox {
+  background: transparent;
+  color: white;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+#toggleMessageBox:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 #messageBoxContent {
@@ -164,11 +189,20 @@ button:hover {
 }
 
 .like-btn {
-  background: #27ae60;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  margin-right: 5px;
 }
 
 .dislike-btn {
-  background: #e74c3c;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
 }
 
 /* Posts and Comments */

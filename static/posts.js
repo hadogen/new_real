@@ -6,7 +6,6 @@ import {ShowSection} from './ui.js'
 window.fetchProtectedResource = fetchProtectedResource;
 
 export async function handleCreatePost() {
-    
     const post = {
         title: document.getElementById("postTitle").value,
         content: document.getElementById("postContent").value,
@@ -18,8 +17,6 @@ export async function handleCreatePost() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "User-ID": currentUser,
-                "Username": currentUsername,
             },
             body: JSON.stringify(post),
         });
@@ -103,30 +100,17 @@ export async function LoadPosts(scroll) {
     }
 }
 
-function setupPostEventListeners() {
+export function setupPostEventListeners() {
     document.querySelectorAll(".like-btn").forEach(button => {
-        button.addEventListener("click", async e =>{
-            e.preventDefault()
-            const scrollPosition = window.scrollY; 
+        button.addEventListener("click", async () => {
             await LikePost(button.dataset.postId);
-
-
-        }
-    )
- 
+        });
     });
 
     document.querySelectorAll(".dislike-btn").forEach(button => {
-        button.addEventListener("click", async e => {
-            e.preventDefault()
-            const scrollPosition = window.scrollY; 
-
+        button.addEventListener("click", async () => {
             await DislikePost(button.dataset.postId);
-            window.scrollTo(0, scrollPosition);
-
-        }
-    )
-
+        });
     });
 
     document.querySelectorAll(".show-comments-btn").forEach(button => {
@@ -147,8 +131,20 @@ export async function LikePost(postId) {
             throw new Error(response.error || "Failed to like post");
         }
 
-        document.getElementById("message").textContent = response.message || "Post liked successfully!";
-        LoadPosts(); 
+        const likeButton = document.querySelector(`button.like-btn[data-post-id="${postId}"]`);
+        const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);
+
+        let likeCount = parseInt(likeButton.textContent.match(/\d+/)[0]);
+
+        if (response.message.includes("removed")) {
+            likeCount--;
+        } else {
+            likeCount++;
+        }
+
+        likeButton.textContent = `Like (${likeCount})`;
+        
+        document.getElementById("message").textContent = response.message;
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }
@@ -167,8 +163,19 @@ export async function DislikePost(postId) {
             throw new Error(response.error || "Failed to dislike post");
         }
 
-        document.getElementById("message").textContent = response.message || "Post disliked successfully!";
-        LoadPosts(); 
+        const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);
+
+        let dislikeCount = parseInt(dislikeButton.textContent.match(/\d+/)[0]);
+
+        if (response.message.includes("removed")) {
+            dislikeCount--;
+        } else {
+            dislikeCount++;
+        }
+
+        dislikeButton.textContent = `Dislike (${dislikeCount})`;
+
+        document.getElementById("message").textContent = response.message;
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }
