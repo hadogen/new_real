@@ -1,7 +1,7 @@
-import { currentUser } from './auth.js';
 import { LikePost, DislikePost } from './posts.js'; 
 import { ShowComments } from './comments.js';
 import { setupPostEventListeners } from './posts.js';
+import { getCurrentUsername } from './utils.js';
 
 window.LikePost = LikePost; 
 window.DislikePost = DislikePost;
@@ -42,13 +42,14 @@ export async function FilterByCategory() {
 }
 
 export async function FilterByCreatedPosts() {
-    if (!currentUser) {
+    const username = await getCurrentUsername();
+    if (!username) {
         document.getElementById("message").textContent = "You must be logged in to view your posts.";
         return;
     }
 
     try {
-        const posts = await fetchProtectedResource(`/posts/created?user_id=${currentUser}`);
+        const posts = await fetchProtectedResource(`/posts/created?username=${username}`);
         if (!posts) {
             throw new Error(posts.error || "Failed to fetch posts");
         }
@@ -77,13 +78,14 @@ export async function FilterByCreatedPosts() {
 }
 
 export async function FilterByLikedPosts() {
-    if (!currentUser) {
+    const username = await getCurrentUsername();
+    if (!username) {
         document.getElementById("message").textContent = "You must be logged in to view liked posts.";
         return;
     }
 
     try {
-        const posts = await fetchProtectedResource(`/posts/liked?user_id=${currentUser}`);
+        const posts = await fetchProtectedResource(`/posts/liked?username=${username}`);
         if (!posts) {
             throw new Error(posts.error || "Failed to fetch posts");
         }

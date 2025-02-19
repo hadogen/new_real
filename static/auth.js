@@ -22,13 +22,9 @@ export async function handleLogin(){
         }
         ConnectWebSocket();
         ShowSection("posts");
-        LoadPosts();
         fetchAllUsers();
         document.getElementById("navLogout").style.display = "block";
         document.getElementById("navLogin").style.display = "none";
-        if (result.username) {
-            document.getElementById("currentUser").textContent = result.username;
-        }
         document.getElementById("message").textContent = result.message || "Login successful!";
     } catch (error) {
         document.getElementById("message").textContent = error.message;
@@ -82,5 +78,3 @@ export async function logout() {
         document.getElementById("message").textContent = "Logout failed";
     }
 }
-
-export { handleLogin, handleRegister, logout };

@@ -79,7 +79,6 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
 		}
-		// Extra checking
 		if dbsession != sessionCookie.Value {
 			log.Println("invalid session")
 			w.WriteHeader(http.StatusUnauthorized)

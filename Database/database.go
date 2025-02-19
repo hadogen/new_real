@@ -30,8 +30,7 @@ func InitDB() (*sql.DB, error) {
 func createTables(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			nickname TEXT UNIQUE,
+			nickname TEXT UNIQUE PRIMARY KEY,
 			email TEXT UNIQUE,
 			password TEXT,
 			age INTEGER,

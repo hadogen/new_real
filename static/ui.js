@@ -1,10 +1,10 @@
-
 import { handleCreateComment} from './comments.js'
 import { handleCreatePost} from './posts.js'
-import {currentUsername, currentUser, setCurrentUser, setCurrentUsername, handleLogin, handleRegister} from './auth.js'
+import {handleLogin, handleRegister} from './auth.js'
 import {FilterByCategory, FilterByCreatedPosts, FilterByLikedPosts} from './filters.js'
 import { sendPrivateMessage} from './websocket.js'
-
+import { getCurrentUsername } from './utils.js'
+import { LoadPosts } from './posts.js'
 
 const sectionTemplates = {
     login: `
@@ -83,11 +83,7 @@ const sectionTemplates = {
     `,
 };
 
-
-
-
-
-export function ShowSection(sectionId) {
+export async function ShowSection(sectionId) {
     const dynamicContent = document.getElementById("dynamicContent");
     dynamicContent.innerHTML = sectionTemplates[sectionId] || "<p>Section not found.</p>";
 
@@ -95,10 +91,9 @@ export function ShowSection(sectionId) {
     const navLogout = document.getElementById("navLogout");
     const navLogin = document.getElementById("navLogin");
     
+    const username = await getCurrentUsername();
     if (navBack) navBack.style.display = ["posts", "comments"].includes(sectionId) ? "block" : "none";
-    if (navLogout) navLogout.style.display = currentUsername ? "block" : "none";
-    if (navLogin) navLogin.style.display = currentUsername ? "none" : "block";
-
+    if (navLogout) navLogout.style.display = username ? "block" : "none";
     setupEventListeners(sectionId);
 }
 

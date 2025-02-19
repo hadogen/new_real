@@ -1,12 +1,14 @@
-import { currentUser, currentUsername } from './auth.js';
-import {ShowSection} from './ui.js';
+import { getCurrentUsername } from './utils.js';
+import { ShowSection } from './ui.js';
+import { fetchProtectedResource } from './posts.js';
+
 export function ShowComments(postId) {
     ShowSection("comments");
     document.getElementById("commentPostId").value = postId;
     LoadComments(postId);
 }
-export async function handleCreateComment(){
-    
+
+export async function handleCreateComment() {
     const comment = {
         post_id: document.getElementById("commentPostId").value,
         content: document.getElementById("commentContent").value,
@@ -17,8 +19,6 @@ export async function handleCreateComment(){
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "User-ID": currentUser,
-                "Username": currentUsername,
             },
             body: JSON.stringify(comment),
         });
@@ -78,14 +78,12 @@ export async function LoadComments(postId) {
     }
 }
 
-
-
 export async function LikeComment(commentId) {
     try {
         const result = await fetchProtectedResource(`/comments/like?comment_id=${commentId}`, {
             method: "POST",
             headers: {
-                "User-ID": currentUser,
+                "Content-Type": "application/json",
             },
         });
 
@@ -105,7 +103,7 @@ export async function DislikeComment(commentId) {
         const result = await fetchProtectedResource(`/comments/dislike?comment_id=${commentId}`, {
             method: "POST",
             headers: {
-                "User-ID": currentUser,
+                "Content-Type": "application/json",
             },
         });
 

@@ -1,21 +1,21 @@
 import { ShowSection } from './ui.js';
 import { LoadPosts, fetchProtectedResource } from './posts.js';
-import { logout, setCurrentUser, setCurrentUsername, currentUsername } from './auth.js';
+import { logout } from './auth.js';
 import { ConnectWebSocket, fetchAllUsers } from './websocket.js';
 
 async function checkSession() {
     try {
         const response = await fetchProtectedResource('/posts');
         if (response) {
+            console.log("Session valid before login");
             ConnectWebSocket();
             ShowSection("posts");
-            LoadPosts();
             fetchAllUsers();
             document.getElementById("navLogout").style.display = "block";
             document.getElementById("navLogin").style.display = "none";
             return;
         }
-        // No valid session, show login
+        console.log("Session invalid before login");
         ShowSection("login");
     } catch (error) {
         console.error('Error checking session:', error);

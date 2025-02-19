@@ -1,7 +1,7 @@
-import { currentUser, currentUsername } from './auth.js';
 import {fetchAllUsers} from './websocket.js'
 import  {ShowComments} from  './comments.js';
 import {ShowSection} from './ui.js'
+import { getCurrentUsername } from './utils.js';
 
 window.fetchProtectedResource = fetchProtectedResource;
 
@@ -33,16 +33,18 @@ export async function handleCreatePost() {
     }
 }
 
-async function fetchProtectedResource(url, options = {}) {
+ export async function fetchProtectedResource(url, options = {}) {
     try {
         const response = await fetch(url, options);
         
         if (response.status === 401) {
+            console.log("Unauthorized");
             ShowSection("login");
             document.getElementById("message").textContent = "Please log in";
             return null;
         }
         if (response.status === 204){
+            console.log("No content");
             return null
         }
         return await response.json();
@@ -58,8 +60,7 @@ export async function LoadPosts(scroll) {
 
         const posts = await fetchProtectedResource("/posts", {
             headers: {
-                "User-ID": currentUser,
-                "Username": currentUsername,
+                "Username": getCurrentUsername(),
             },
         });
 
@@ -122,13 +123,10 @@ export async function LikePost(postId) {
     try {
         const response = await fetchProtectedResource(`/posts/like?post_id=${postId}`, {
             method: "POST",
-            headers: {
-                "User-ID": currentUser,
-            },
         });
 
         if (!response) {
-            throw new Error(response.error || "Failed to like post");
+            throw new Error("Failed to like post");
         }
 
         const likeButton = document.querySelector(`button.like-btn[data-post-id="${postId}"]`);
@@ -154,13 +152,10 @@ export async function DislikePost(postId) {
     try {
         const response = await fetchProtectedResource(`/posts/dislike?post_id=${postId}`, {
             method: "POST",
-            headers: {
-                "User-ID": currentUser,
-            },
         });
-
+                
         if (!response) {
-            throw new Error(response.error || "Failed to dislike post");
+            throw new Error("Failed to dislike post");
         }
 
         const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);

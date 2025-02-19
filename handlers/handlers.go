@@ -51,9 +51,9 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	user.ID = uuid.New().String()
 
 	_, err = database.Db.Exec(`
-        INSERT INTO users (id, nickname, email, password, age, gender, first_name, last_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, user.ID, user.Nickname, user.Email, user.Password, user.Age, user.Gender, user.FirstName, user.LastName)
+        INSERT INTO users ( nickname, email, password, age, gender, first_name, last_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,  user.Nickname, user.Email, user.Password, user.Age, user.Gender, user.FirstName, user.LastName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to register user: " + err.Error()})
@@ -72,21 +72,22 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err := json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
+		fmt.Println("invalid request")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
 
 	var user struct {
-		ID       string `json:"id"`
 		Nickname string `json:"nickname"`
 		Password string `json:"password"`
 	}
 	err = database.Db.QueryRow(`
-        SELECT id, nickname, password FROM users
+        SELECT nickname, password FROM users
         WHERE nickname = ? OR email = ?
-    `, credentials.Login, credentials.Login).Scan(&user.ID, &user.Nickname, &user.Password)
+    `, credentials.Login, credentials.Login).Scan(&user.Nickname, &user.Password)
 	if err != nil {
+		fmt.Println("user not found")
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "User not found"})
@@ -104,7 +105,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create session
 	session := uuid.New().String()
 	expiration := time.Now().Add(60 * time.Minute)
 
@@ -112,21 +112,20 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         DELETE FROM sessions WHERE nickname = ?
     `, user.Nickname)
 	if err != nil {
+		fmt.Println("failed to delete session")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete session"})
-		fmt.Println("failed to delete session")
 		return
 	}
 
 	// Set session cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    session,
-		Expires:  expiration,
-		Path:     "/",
-		HttpOnly: true, // Prevents JavaScript access to the cookie
-		SameSite: http.SameSiteStrictMode,
+		Name:    "session",
+		Value:   session,
+		Expires: expiration,
+		Path:    "/",
 	})
+	fmt.Println("session created", session)
 
 	// Store session in database
 	_, err = database.Db.Exec(`
@@ -134,9 +133,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         VALUES (?, ?, ?)
     `, session, user.Nickname, expiration)
 	if err != nil {
+		fmt.Println("failed to create session")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create session"})
-		fmt.Println("failed to create session")
 		return
 	}
 
@@ -208,15 +207,6 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user ID from database
-	var userID string
-	err = database.Db.QueryRow("SELECT id FROM users WHERE nickname = ?", username).Scan(&userID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to get user ID"})
-		return
-	}
-
 	var post struct {
 		Title    string `json:"title"`
 		Content  string `json:"content"`
@@ -233,9 +223,9 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	createdAt := time.Now().Format(time.RFC3339)
 
 	_, err = database.Db.Exec(`
-        INSERT INTO posts (id, user_id, username, title, content, category, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, postID, userID, username, post.Title, post.Content, post.Category, createdAt)
+        INSERT INTO posts (id, username, title, content, category, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, postID, username, post.Title, post.Content, post.Category, createdAt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create post: " + err.Error()})
@@ -335,4 +325,21 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(nicknames)
+}
+
+func GetCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
+	if err != nil {
+		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"username": username})
 }

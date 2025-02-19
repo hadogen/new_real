@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	database "main/Database"
 	"net/http"
 	"time"
@@ -19,31 +18,39 @@ func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Header.Get("User-ID")
-	if userID == "" {
+	// Get username from session
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid session"})
+		return
+	}
+
 	// Check if the user has already liked the comment
 	var likeID string
-	err := database.Db.QueryRow(`
+	err = database.Db.QueryRow(`
         SELECT id FROM comment_likes
         WHERE comment_id = ? AND user_id = ?
-    `, commentID, userID).Scan(&likeID)
+    `, commentID, username).Scan(&likeID)
 	if err == nil {
 		_, err := database.Db.Exec(`
         DELETE FROM comment_likes
         WHERE comment_id = ? AND user_id = ?
-    `, commentID, userID)
+    `, commentID, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"message": "Error removing like comment from database"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to remove like"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"message": "like comment removed successfully"})
+		json.NewEncoder(w).Encode(map[string]string{"message": "Like removed successfully"})
 		return
 	}
 
@@ -52,10 +59,10 @@ func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = database.Db.Exec(`
         INSERT INTO comment_likes (id, comment_id, user_id)
         VALUES (?, ?, ?)
-    `, likeID, commentID, userID)
+    `, likeID, commentID, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to like comment: " + err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to like comment"})
 		return
 	}
 
@@ -72,31 +79,39 @@ func DislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Header.Get("User-ID")
-	if userID == "" {
+	// Get username from session
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid session"})
+		return
+	}
+
 	// Check if the user has already disliked the comment
 	var dislikeID string
-	err := database.Db.QueryRow(`
+	err = database.Db.QueryRow(`
         SELECT id FROM comment_dislikes
         WHERE comment_id = ? AND user_id = ?
-    `, commentID, userID).Scan(&dislikeID)
+    `, commentID, username).Scan(&dislikeID)
 	if err == nil {
 		_, err := database.Db.Exec(`
         DELETE FROM comment_dislikes
         WHERE comment_id = ? AND user_id = ?
-    `, commentID, userID)
+    `, commentID, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"message": "Error removing dislike from database"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to remove dislike"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"message": "Dislike comment removed successfully"})
+		json.NewEncoder(w).Encode(map[string]string{"message": "Dislike removed successfully"})
 		return
 	}
 
@@ -105,10 +120,10 @@ func DislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = database.Db.Exec(`
         INSERT INTO comment_dislikes (id, comment_id, user_id)
         VALUES (?, ?, ?)
-    `, dislikeID, commentID, userID)
+    `, dislikeID, commentID, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to dislike comment: " + err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to dislike comment"})
 		return
 	}
 
@@ -128,12 +143,16 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
-
-	userID := r.Header.Get("User-ID")
-	username := r.Header.Get("Username")
-	if userID == "" || username == "" {
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Cookie not found"})
+		return
+	}
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Cookie not found in database"})
 		return
 	}
 
@@ -141,9 +160,9 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	createdAt := time.Now().Format(time.RFC3339)
 
 	_, err = database.Db.Exec(`
-        INSERT INTO comments (id, post_id, user_id, username, content, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `, commentID, comment.PostID, userID, username, comment.Content, createdAt)
+        INSERT INTO comments (id, post_id,  username, content, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    `, commentID, comment.PostID,  username, comment.Content, createdAt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create comment: " + err.Error()})
@@ -225,42 +244,47 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Like a post
-
 func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
-
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})
 		return
 	}
 
-	// Get the user ID from the session
-	userID := r.Header.Get("User-ID")
-	if userID == "" {
+	// Get username from session
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid session"})
+		return
+	}
+
 	// Check if the user has already liked the post
 	var likeID string
-	err := database.Db.QueryRow(`
+	err = database.Db.QueryRow(`
         SELECT id FROM post_likes
         WHERE post_id = ? AND user_id = ?
-    `, postID, userID).Scan(&likeID)
+    `, postID, username).Scan(&likeID)
 	if err == nil {
 		_, err := database.Db.Exec(`
         DELETE FROM post_likes
         WHERE post_id = ? AND user_id = ?
-    `, postID, userID)
+    `, postID, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"message": "Error removing like from database"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to remove like"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"message": "like removed successfully"})
+		json.NewEncoder(w).Encode(map[string]string{"message": "Like removed successfully"})
 		return
 	}
 
@@ -269,49 +293,55 @@ func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = database.Db.Exec(`
         INSERT INTO post_likes (id, post_id, user_id)
         VALUES (?, ?, ?)
-    `, likeID, postID, userID)
+    `, likeID, postID, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to like post: " + err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to like post"})
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Post liked successfully"})
 }
 
 // Dislike a post
 func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
-	fmt.Println("postid", postID)
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})
 		return
 	}
 
-	userID := r.Header.Get("User-ID")
-	if userID == "" {
+	// Get username from session
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid session"})
+		return
+	}
+
 	// Check if the user has already disliked the post
 	var dislikeID string
-	err := database.Db.QueryRow(`
+	err = database.Db.QueryRow(`
         SELECT id FROM post_dislikes
         WHERE post_id = ? AND user_id = ?
-    `, postID, userID).Scan(&dislikeID)
+    `, postID, username).Scan(&dislikeID)
 	if err == nil {
 		_, err := database.Db.Exec(`
         DELETE FROM post_dislikes
         WHERE post_id = ? AND user_id = ?
-    `, postID, userID)
+    `, postID, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"message": "Error removing dislike from database"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to remove dislike"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -324,10 +354,10 @@ func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = database.Db.Exec(`
         INSERT INTO post_dislikes (id, post_id, user_id)
         VALUES (?, ?, ?)
-    `, dislikeID, postID, userID)
+    `, dislikeID, postID, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to dislike post: " + err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to dislike post"})
 		return
 	}
 
