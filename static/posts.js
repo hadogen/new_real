@@ -53,16 +53,12 @@ export async function handleCreatePost() {
     }
 }
 
-export async function LoadPosts(scroll) {
+export async function LoadPosts() {
     try {
         ShowSection("posts")
         const postFeed = document.getElementById("postFeed");
 
-        const posts = await fetchProtectedResource("/posts", {
-            headers: {
-                "Username": getCurrentUsername(),
-            },
-        });
+        const posts = await fetchProtectedResource("/posts")
 
         if (!posts) {
             throw new Error("Failed to load posts");
@@ -153,7 +149,7 @@ export async function DislikePost(postId) {
         const response = await fetchProtectedResource(`/posts/dislike?post_id=${postId}`, {
             method: "POST",
         });
-                
+
         if (!response) {
             throw new Error("Failed to dislike post");
         }

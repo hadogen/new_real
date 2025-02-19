@@ -4,7 +4,7 @@ import {handleLogin, handleRegister} from './auth.js'
 import {FilterByCategory, FilterByCreatedPosts, FilterByLikedPosts} from './filters.js'
 import { sendPrivateMessage} from './websocket.js'
 import { getCurrentUsername } from './utils.js'
-import { LoadPosts } from './posts.js'
+
 
 const sectionTemplates = {
     login: `
@@ -90,10 +90,15 @@ export async function ShowSection(sectionId) {
     const navBack = document.getElementById("navBack");
     const navLogout = document.getElementById("navLogout");
     const navLogin = document.getElementById("navLogin");
+    const navRegister = document.getElementById("navRegister");
     
     const username = await getCurrentUsername();
+    
+    // Update visibility of navigation buttons
     if (navBack) navBack.style.display = ["posts", "comments"].includes(sectionId) ? "block" : "none";
     if (navLogout) navLogout.style.display = username ? "block" : "none";
+    if (navLogin) navLogin.style.display = username ? "none" : "block";
+    if (navRegister) navRegister.style.display = username ? "none" : "block";
     setupEventListeners(sectionId);
 }
 

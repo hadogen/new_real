@@ -8,9 +8,10 @@ async function checkSession() {
         const response = await fetchProtectedResource('/posts');
         if (response) {
             console.log("Session valid before login");
-            ConnectWebSocket();
+            await ConnectWebSocket();
             ShowSection("posts");
-            fetchAllUsers();
+             await fetchAllUsers();
+            await LoadPosts()
             document.getElementById("navLogout").style.display = "block";
             document.getElementById("navLogin").style.display = "none";
             document.getElementById("navRegister").style.display = "none";
@@ -18,6 +19,9 @@ async function checkSession() {
         }
         console.log("Session invalid before login");
         ShowSection("login");
+        document.getElementById("navLogout").style.display = "none";
+        document.getElementById("navLogin").style.display = "block";
+        document.getElementById("navRegister").style.display = "block";
     } catch (error) {
         console.error('Error checking session:', error);
         ShowSection("login");
