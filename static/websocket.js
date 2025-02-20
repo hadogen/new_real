@@ -18,7 +18,6 @@ export async function ConnectWebSocket() {
         
         ws.onerror = (e) => {
             console.error("websocket error:", e);
-            // Attempt to reconnect after error
             setTimeout(ConnectWebSocket, 3000);
         };
         

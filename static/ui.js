@@ -94,7 +94,6 @@ export async function ShowSection(sectionId) {
     
     const username = await getCurrentUsername();
     
-    // Update visibility of navigation buttons
     if (navBack) navBack.style.display = ["posts", "comments"].includes(sectionId) ? "block" : "none";
     if (navLogout) navLogout.style.display = username ? "block" : "none";
     if (navLogin) navLogin.style.display = username ? "none" : "block";
@@ -103,18 +102,18 @@ export async function ShowSection(sectionId) {
 }
 
 function setupEventListeners(sectionId) {
-    // Register form
     const registerForm = document.getElementById("registerForm");
     if (sectionId === "register" && registerForm) {
+        registerForm.removeEventListener("submit", handleRegister);
         registerForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             await handleRegister(e);
         });
     }
 
-    // Login form
     const loginForm = document.getElementById("loginForm");
     if (sectionId === "login" && loginForm) {
+        loginForm.removeEventListener("submit", handleLogin);
         loginForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             await handleLogin(e);
@@ -123,31 +122,45 @@ function setupEventListeners(sectionId) {
 
     // Create post form
     const createPostForm = document.getElementById("createPostForm");
-    const filter = document.getElementById("btn-filter")
-    const filterLiked = document.getElementById("btn-filter-liked")
-    const filterCreated = document.getElementById("btn-filter-created")
-    if (sectionId === "posts" && createPostForm) {
-        createPostForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            await handleCreatePost(e);
-        });
-        filter.addEventListener("click", async ()=>{
-            await FilterByCategory()
-        } )
-        filterLiked.addEventListener("click", async ()=>{
-            await FilterByLikedPosts()
-        } )
-        filterCreated.addEventListener("click", async ()=>{
-            await FilterByCreatedPosts()
-        } )
-        document.getElementById("sendMessageButton").addEventListener("click",  ()=>{
-            sendPrivateMessage();
-        })
+    const filter = document.getElementById("btn-filter");
+    const filterLiked = document.getElementById("btn-filter-liked");
+    const filterCreated = document.getElementById("btn-filter-created");
+    
+    if (sectionId === "posts") {
+        if (createPostForm) {
+            createPostForm.removeEventListener("submit", handleCreatePost);
+            createPostForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                await handleCreatePost(e);
+            });
+        }
+        
+        if (filter) {
+            filter.removeEventListener("click", FilterByCategory);
+            filter.addEventListener("click", FilterByCategory);
+        }
+        
+        if (filterLiked) {
+            filterLiked.removeEventListener("click", FilterByLikedPosts);
+            filterLiked.addEventListener("click", FilterByLikedPosts);
+        }
+        
+        if (filterCreated) {
+            filterCreated.removeEventListener("click", FilterByCreatedPosts);
+            filterCreated.addEventListener("click", FilterByCreatedPosts);
+        }
+
+        const sendMessageButton = document.getElementById("sendMessageButton");
+        if (sendMessageButton) {
+            sendMessageButton.removeEventListener("click", sendPrivateMessage);
+            sendMessageButton.addEventListener("click", sendPrivateMessage);
+        }
     }
 
     // Create comment form
     const createCommentForm = document.getElementById("createCommentForm");
     if (sectionId === "comments" && createCommentForm) {
+        createCommentForm.removeEventListener("submit", handleCreateComment);
         createCommentForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             await handleCreateComment(e);
