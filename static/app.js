@@ -8,10 +8,12 @@ async function checkSession() {
         const response = await fetchProtectedResource('/posts');
         if (response) {
             console.log("Session valid before login");
-            await ConnectWebSocket();
             ShowSection("posts");
-             await fetchAllUsers();
-            await LoadPosts()
+            await Promise.all([
+                ConnectWebSocket(),
+                fetchAllUsers(),
+                LoadPosts()
+            ]);
             document.getElementById("navLogout").style.display = "block";
             document.getElementById("navLogin").style.display = "none";
             document.getElementById("navRegister").style.display = "none";

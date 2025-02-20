@@ -53,7 +53,8 @@ func AutoLog(next http.HandlerFunc)http.HandlerFunc{
 			next(w, r)
 			return
 		}
-		http.Redirect(w, r, "/posts", http.StatusContinue)
+		w.WriteHeader(http.StatusUnauthorized)
+        json.NewEncoder(w).Encode(map[string]string{"error": "Already logged in"})
 	}
 }
 func Middleware(next http.HandlerFunc) http.HandlerFunc {

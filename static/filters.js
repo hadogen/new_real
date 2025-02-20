@@ -13,7 +13,9 @@ window.FilterByLikedPosts  = FilterByLikedPosts;
 export async function FilterByCategory() {
     const category = document.getElementById("categoryFilter").value;
     try {
-        const posts = await fetchProtectedResource(`/posts/category?category=${category}`);
+        const posts = await fetchProtectedResource(`/posts/category?category=${category}`, {
+            method: "GET"
+        });
         if (!posts) {
             throw new Error(posts.error || "Failed to fetch posts");
         }
@@ -49,7 +51,9 @@ export async function FilterByCreatedPosts() {
     }
 
     try {
-        const posts = await fetchProtectedResource(`/posts/created?username=${username}`);
+        const posts = await fetchProtectedResource(`/posts/created?username=${username}`,{
+            method: "GET"
+        });
         if (!posts) {
             throw new Error(posts.error || "Failed to fetch posts");
         }
@@ -85,7 +89,9 @@ export async function FilterByLikedPosts() {
     }
 
     try {
-        const posts = await fetchProtectedResource(`/posts/liked?username=${username}`);
+        const posts = await fetchProtectedResource(`/posts/liked?username=${username}`, {
+            method : "GET"
+        });
         if (!posts) {
             throw new Error(posts.error || "Failed to fetch posts");
         }

@@ -36,14 +36,21 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request format"})
+		return
+	}
+
+	// Validate user data
+	if user.Nickname == "" || user.Email == "" || user.Password == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Missing required fields"})
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to hash password"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to process password"})
 		return
 	}
 	user.Password = string(hashedPassword)
@@ -53,7 +60,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = database.Db.Exec(`
         INSERT INTO users ( nickname, email, password, age, gender, first_name, last_name)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    `,  user.Nickname, user.Email, user.Password, user.Age, user.Gender, user.FirstName, user.LastName)
+    `, user.Nickname, user.Email, user.Password, user.Age, user.Gender, user.FirstName, user.LastName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to register user: " + err.Error()})
@@ -72,28 +79,33 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err := json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
-		fmt.Println("invalid request")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request format"})
+		return
+	}
+
+	// Validate credentials
+	if credentials.Login == "" || credentials.Password == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Missing login or password"})
 		return
 	}
 
 	var user struct {
-		Nickname string `json:"nickname"`
-		Password string `json:"password"`
+		Nickname string
+		Password string
 	}
 	err = database.Db.QueryRow(`
         SELECT nickname, password FROM users
         WHERE nickname = ? OR email = ?
     `, credentials.Login, credentials.Login).Scan(&user.Nickname, &user.Password)
 	if err != nil {
-		fmt.Println("user not found")
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "User not found"})
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "wrong"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Database error"})
 		}
 		return
 	}
@@ -160,7 +172,8 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = database.Db.Exec(`DELETE FROM sessions WHERE session = ?`, sessionCookie.Value)
 	if err != nil {
-		http.Error(w, "Failed to delete session", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "failed delete"})
 		return
 	}
 
@@ -197,13 +210,15 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	// Get username from session
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "cookie not found"})
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
-		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "cookie not found database"})
 		return
 	}
 

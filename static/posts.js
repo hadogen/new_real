@@ -33,9 +33,12 @@ export async function handleCreatePost() {
     }
 }
 
- export async function fetchProtectedResource(url, options = {}) {
+export async function fetchProtectedResource(url, options = {}) {
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, {
+            ...options,
+            credentials: 'include'
+        });
         
         if (response.status === 401) {
             console.log("Unauthorized");
@@ -45,7 +48,7 @@ export async function handleCreatePost() {
         }
         if (response.status === 204){
             console.log("No content");
-            return null
+            return null;
         }
         return await response.json();
     } catch (error) {

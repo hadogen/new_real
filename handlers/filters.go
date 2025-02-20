@@ -90,8 +90,8 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
 		return
 	}
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
+	username := r.URL.Query().Get("username")
+	if username == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "User ID is required"})
 		return
@@ -110,7 +110,7 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
         FROM posts p
         WHERE p.user_id = ?
         ORDER BY p.created_at DESC
-    `, userID)
+    `, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch posts: " + err.Error()})
@@ -172,8 +172,8 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
 		return
 	}
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
+	username := r.URL.Query().Get("username")
+	if username == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "User ID is required"})
 		return
@@ -193,7 +193,7 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
         INNER JOIN post_likes pl ON p.id = pl.post_id
         WHERE pl.user_id = ?
         ORDER BY p.created_at DESC
-    `, userID)
+    `, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch posts: " + err.Error()})

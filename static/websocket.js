@@ -5,37 +5,44 @@ window.sendPrivateMessage = sendPrivateMessage;
 export let ws = null;
 
 export async function ConnectWebSocket() {
-    ws = new WebSocket("ws://localhost:8080/ws"); 
-
-    console.log("ws connected", ws)
-
-    ws.onopen = ()=> {
-        console.log("websocket connection opened")
-    }
-    ws.onclose =()=> {
-        console.log("websocket closed succesfully")
-    }
-    ws.onerror = (e)=>{
-        console.log("websocket error :" , e)
-    }
-    ws.onmessage = async function(event) {
-        const messageList = document.getElementById('messageList');
-        const messageBoxContent = document.getElementById('messageBoxContent');
-
-        if (!messageList) return;
-
-        const data = JSON.parse(event.data);
-        const messageItem = document.createElement('li');
-        const timeFormatted = new Date(data.time).toLocaleTimeString(); 
-        const currentUsername = await getCurrentUsername();
-
-        messageItem.classList.add('message-item');
-        messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
-        messageList.appendChild(messageItem);
-        messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
+    try {
+        ws = new WebSocket("ws://localhost:8080/ws");
         
-        fetchMessages(data.sender, currentUsername);
-    };
+        ws.onopen = () => {
+            console.log("websocket connection opened");
+        };
+        
+        ws.onclose = () => {
+            console.log("websocket closed successfully");
+        };
+        
+        ws.onerror = (e) => {
+            console.error("websocket error:", e);
+            // Attempt to reconnect after error
+            setTimeout(ConnectWebSocket, 3000);
+        };
+        
+        ws.onmessage = async function(event) {
+            const messageList = document.getElementById('messageList');
+            const messageBoxContent = document.getElementById('messageBoxContent');
+
+            if (!messageList) return;
+
+            const data = JSON.parse(event.data);
+            const messageItem = document.createElement('li');
+            const timeFormatted = new Date(data.time).toLocaleTimeString(); 
+            const currentUsername = await getCurrentUsername();
+
+            messageItem.classList.add('message-item');
+            messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
+            messageList.appendChild(messageItem);
+            messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
+            
+            fetchMessages(data.sender, currentUsername);
+        };
+    } catch (error) {
+        console.error("Error connecting to WebSocket:", error);
+    }
 }
 
 let selectedUser = null;

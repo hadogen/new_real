@@ -16,14 +16,14 @@ func main() {
 	}
 	defer db.Close()
 
-	http.HandleFunc("/register", handlers.RegisterHandler)
-	http.HandleFunc("/login", handlers.LoginHandler) // access the website directly if the cookie is still valid
+	http.HandleFunc("/register", auth.AutoLog(handlers.RegisterHandler))
+	http.HandleFunc("/login", auth.AutoLog(handlers.LoginHandler)) // access the website directly if the cookie is still valid
 	http.HandleFunc("/logout", handlers.LogoutHandler)
 
 	http.HandleFunc("/posts", auth.Middleware(handlers.GetPostsHandler))
 	http.HandleFunc("/posts/create", auth.Middleware(handlers.CreatePostHandler))
-	http.HandleFunc("/posts/like", handlers.LikePostHandler)
-	http.HandleFunc("/posts/dislike", handlers.DislikePostHandler)
+	http.HandleFunc("/posts/like", auth.Middleware(handlers.LikePostHandler))
+	http.HandleFunc("/posts/dislike", auth.Middleware(handlers.DislikePostHandler))
 
 	http.HandleFunc("/posts/category", auth.Middleware(handlers.GetPostsByCategoryHandler))
 	http.HandleFunc("/posts/created", auth.Middleware(handlers.GetPostsByUserHandler))

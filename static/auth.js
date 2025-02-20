@@ -14,6 +14,7 @@ export async function handleLogin() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(credentials),
+            credentials: 'include'
         });
 
         const result = await response.json();
@@ -21,10 +22,14 @@ export async function handleLogin() {
             console.log("Can't Login")
             throw new Error(result.error || "Failed to login");
         }
-        ShowSection("posts"); 
-        await ConnectWebSocket();
-        await LoadPosts(); 
-        await fetchAllUsers(); 
+        ShowSection("posts");
+        
+        await Promise.all([
+            ConnectWebSocket(),
+            fetchAllUsers(),
+            LoadPosts()
+        ]);
+        
         
         document.getElementById("navLogout").style.display = "block";
         document.getElementById("navLogin").style.display = "none";
