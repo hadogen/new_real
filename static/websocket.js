@@ -47,6 +47,7 @@ export async function ConnectWebSocket() {
 
         case "private":
           handlePrivateMessage(data);
+          console.log("Private message:", data.message, "from", data.sender);
           break;
 
         default:
@@ -109,7 +110,6 @@ function appendMessageToChat(data) {
     messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
     messageList.appendChild(messageItem);
   
-    // Scroll to bottom
     const messageBoxContent = document.getElementById("messageBoxContent");
     messageBoxContent.scrollTop = messageBoxContent.scrollHeight;
   }
@@ -156,21 +156,21 @@ export async function loadChatWithUser(user) {
 export async function sendPrivateMessage() {
   const messageInput = document.getElementById("messageInput");
   const message = messageInput.value.trim();
-
+  console.log("Sending message:", message);
   if (message && selectedUser && ws) {
     const currentUsername = await getCurrentUsername();
     if (!currentUsername) return;
-
+    console.log("this is the current user", currentUsername);
     ws.send(
       JSON.stringify({
         type: "message",
-        sender: currentUsername,
+        username: currentUsername,
         receiver: selectedUser,
         message: message,
         time: new Date().toISOString(),
       })
     );
-
+    messageInput.value = "";
     messageInput.value = "";
 
     const messageList = document.getElementById("messageList");
@@ -240,15 +240,34 @@ function showNotification(sender) {
   
       li.addEventListener('click', async () => {
         selectedUser = user;
-        unreadCounts[user] = 0; 
-        updateUserList(activeUsers); 
-       
-        await loadChatWithUser(user);
-        
-       
+        console.log(`Selected user: ${user}`);
+        unreadCounts[user] = 0;
+        updateUserList(activeUsers);
+        loadChatWithUser(user);
+  
+        const messageBox = document.getElementById("messageBox");
+        if (messageBox.classList.contains("collapsed")) {
+          messageBox.classList.remove("collapsed");
+          const toggleButton = document.getElementById("toggleMessageBox");
+          if (toggleButton) {
+            toggleButton.textContent = "▼";
+          }
+        }
+  
         const chatHeader = document.getElementById("chatHeader");
         if (chatHeader) {
           chatHeader.textContent = `Chat with ${user}`;
+        }
+  
+        const messageList = document.getElementById("messageList");
+        if (messageList) {
+          messageList.innerHTML = ""; 
+          await loadChatWithUser(user);
+        }
+  
+        const messageInput = document.getElementById("messageInput");
+        if (messageInput) {
+          messageInput.focus();
         }
       });
   

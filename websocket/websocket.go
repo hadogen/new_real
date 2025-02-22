@@ -76,6 +76,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		switch messageData.Type {
 		case "message":
+			fmt.Println("handling pm", messageData.Message)
 			handlePrivateMessage(messageData)
 		case "requestUsers":
 			sendOnlineUsers(conn)
@@ -92,7 +93,7 @@ func handlePrivateMessage(messageData struct {
 	Receiver string `json:"receiver"`
 	Time     string `json:"time"`
 }) {
-	// Insert the message into the database
+	fmt.Println("messageData: ", messageData.Message)
 	_, err := database.Db.Exec(`
 		INSERT INTO private_messages (sender, receiver, message, created_at)
 		VALUES (?, ?, ?, ?)
