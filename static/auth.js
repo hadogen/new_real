@@ -23,18 +23,17 @@ export async function handleLogin() {
             throw new Error(result.error || "Failed to login");
         }
         ShowSection("posts");
-        
+        document.getElementById("navLogout").style.display = "block";
+        document.getElementById("navLogin").style.display = "none";
+        document.getElementById("navRegister").style.display = "none";
+        document.getElementById("message").textContent = result.message || "Login successful!";
         await Promise.all([
             ConnectWebSocket(),
             fetchAllUsers(),
             LoadPosts()
         ]);
         
-        
-        document.getElementById("navLogout").style.display = "block";
-        document.getElementById("navLogin").style.display = "none";
-        document.getElementById("navRegister").style.display = "none";
-        document.getElementById("message").textContent = result.message || "Login successful!";
+
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }
