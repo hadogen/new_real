@@ -27,7 +27,7 @@ export async function handleCreatePost() {
 
         document.getElementById("message").textContent = response.message || "Post created successfully!";
         document.getElementById("createPostForm").reset();
-        LoadPosts(); 
+        await LoadPosts(); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }
@@ -91,7 +91,6 @@ export async function LoadPosts() {
         } else {
             postFeed.innerHTML = "<p>No posts found.</p>";
         }
-        fetchAllUsers()
     } catch (error) {
         const messageElement = document.getElementById("message");
         if (messageElement) {

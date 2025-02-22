@@ -4,6 +4,11 @@ import { LoadPosts } from './posts.js';
 import { ws } from './websocket.js';
 
 export async function handleLogin() {
+    console.log("handleLogin");
+    const loginButton = document.querySelector("#loginForm button[type='submit']");
+    if (loginButton.disabled) return; 
+    
+    loginButton.disabled = true; 
     const credentials = {
         login: document.getElementById("loginId").value,
         password: document.getElementById("loginPassword").value,
@@ -22,20 +27,21 @@ export async function handleLogin() {
             console.log("Can't Login")
             throw new Error(result.error || "Failed to login");
         }
-        ShowSection("posts");
         document.getElementById("navLogout").style.display = "block";
         document.getElementById("navLogin").style.display = "none";
         document.getElementById("navRegister").style.display = "none";
         document.getElementById("message").textContent = result.message || "Login successful!";
-        await Promise.all([
-            ConnectWebSocket(),
-            fetchAllUsers(),
-            LoadPosts()
-        ]);
-        
+        ShowSection("posts");
+
+        await LoadPosts();
+        await ConnectWebSocket();
+        await fetchAllUsers();
+
 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
+    } finally {
+        loginButton.disabled = false;
     }
 }
 

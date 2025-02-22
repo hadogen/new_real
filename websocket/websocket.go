@@ -34,24 +34,26 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	session, err := r.Cookie("session")
+	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		log.Println("Error getting session cookie:", err)
 		return
 	}
-	username, err := database.GetUsernameFromSession(session.Value)
 
-	fmt.Println("Username:", username)
+	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
-		fmt.Println("Error getting username from session:", err)
+		log.Println("Error getting username from session:", err)
 		return
 	}
 
 	OnlineConnections.Mutex.Lock()
 	OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username], conn)
 	OnlineConnections.Mutex.Unlock()
-	fmt.Println("username added to connections"+ username)
-	
+
+	broadcastUserStatus(username, true)
+
+	sendOnlineUsers(conn)
+
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
@@ -72,73 +74,101 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		_, err = database.Db.Exec(`
-            INSERT INTO private_messages (sender, receiver, message, created_at)
-            VALUES (?, ?, ?, ?)
-        `, messageData.Username, messageData.Receiver, messageData.Message, messageData.Time)
-
-		if err != nil {
-			log.Println("Error inserting message into the database:", err)
-			break
-		}
-
-		log.Printf("Received message from %s to %s: %s", messageData.Username, messageData.Receiver, messageData.Message)
-
-		receiverConnections, ok := OnlineConnections.Clients[messageData.Receiver]
-		//check if the user/sender logs out all connections get deleted 
-		//if the receiver is loged out the message should still be added to the database and not shown for that connection but when he fetches the messages all the
-		if ok {
-			for _, receiverConnection := range receiverConnections {
-				responseMessage := map[string]string{
-					"type":    "private",
-					"sender":  messageData.Username,
-					"message": messageData.Message,
-					"time":    messageData.Time,
-				}
-				message, _:= json.Marshal(responseMessage)
-				err := receiverConnection.WriteMessage(websocket.TextMessage, message)
-				if err != nil {
-					log.Println("error sending message")
-				}
-			}
-		} else {
-			log.Printf("Receiver %s is not online", messageData.Receiver)
+		switch messageData.Type {
+		case "message":
+			handlePrivateMessage(messageData)
+		case "requestUsers":
+			sendOnlineUsers(conn)
 		}
 	}
-	var temp []*websocket.Conn
 
-	if len(OnlineConnections.Clients[username])==1 {
-		OnlineConnections.Mutex.Lock()
-		delete(OnlineConnections.Clients, username)
-		OnlineConnections.Mutex.Unlock()
-	}else{
-		for _, activeConn := range OnlineConnections.Clients[username] {
-			if activeConn.RemoteAddr().String() != conn.RemoteAddr().String() {
-				temp = append(temp, activeConn)
+	handleDisconnection(username, conn)
+}
+
+func handlePrivateMessage(messageData struct {
+	Type     string `json:"type"`
+	Username string `json:"username"`
+	Message  string `json:"message"`
+	Receiver string `json:"receiver"`
+	Time     string `json:"time"`
+}) {
+	// Insert the message into the database
+	_, err := database.Db.Exec(`
+		INSERT INTO private_messages (sender, receiver, message, created_at)
+		VALUES (?, ?, ?, ?)
+	`, messageData.Username, messageData.Receiver, messageData.Message, messageData.Time)
+
+	if err != nil {
+		log.Println("Error inserting message into the database:", err)
+		return
+	}
+
+	OnlineConnections.Mutex.Lock()
+	receiverConnections, ok := OnlineConnections.Clients[messageData.Receiver]
+	OnlineConnections.Mutex.Unlock()
+
+	if ok {
+		for _, receiverConnection := range receiverConnections {
+			responseMessage := map[string]string{
+				"type":    "private",
+				"sender":  messageData.Username,
+				"message": messageData.Message,
+				"time":    messageData.Time,
+			}
+			message, _ := json.Marshal(responseMessage)
+			err := receiverConnection.WriteMessage(websocket.TextMessage, message)
+			if err != nil {
+				log.Println("Error sending message to receiver:", err)
 			}
 		}
-		OnlineConnections.Mutex.Lock()
-		OnlineConnections.Clients[username] = temp
-		OnlineConnections.Mutex.Unlock()
-
 	}
 }
 
-func GetActiveUsers(w http.ResponseWriter, r *http.Request) {
+func sendOnlineUsers(conn *websocket.Conn) {
+	OnlineConnections.Mutex.Lock()
+	activeUsers := make([]string, 0, len(OnlineConnections.Clients))
+	for user := range OnlineConnections.Clients {
+		activeUsers = append(activeUsers, user)
+	}
+	OnlineConnections.Mutex.Unlock()
+	fmt.Println("active users: ", activeUsers)
+	conn.WriteJSON(map[string]interface{}{
+		"type":  "userList",
+		"users": activeUsers,
+	})
+}
+
+func broadcastUserStatus(username string, online bool) {
 	OnlineConnections.Mutex.Lock()
 	defer OnlineConnections.Mutex.Unlock()
-	var activeUsers []string
-	for username := range OnlineConnections.Clients {
-		activeUsers = append(activeUsers, username)
+
+	for _, conns := range OnlineConnections.Clients {
+		for _, conn := range conns {
+			conn.WriteJSON(map[string]interface{}{
+				"type":     "userStatus",
+				"username": username,
+				"online":   online,
+			})
+		}
 	}
-	if len(activeUsers)<=0{
-		fmt.Println("no active users")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNoContent)
-		json.NewEncoder(w).Encode(map[string]string{"message": "No Active Users"})
-		return
+}
+
+func handleDisconnection(username string, conn *websocket.Conn) {
+	OnlineConnections.Mutex.Lock()
+	defer OnlineConnections.Mutex.Unlock()
+
+	if connections, ok := OnlineConnections.Clients[username]; ok {
+		newConns := make([]*websocket.Conn, 0)
+		for _, c := range connections {
+			if c != conn {
+				newConns = append(newConns, c)
+			}
+		}
+		OnlineConnections.Clients[username] = newConns
+
+		if len(newConns) == 0 {
+			delete(OnlineConnections.Clients, username)
+			broadcastUserStatus(username, false)
+		}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(activeUsers)
 }

@@ -160,24 +160,27 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
+		fmt.Println("No session cookie found")
 		http.Error(w, "Session not found", http.StatusUnauthorized)
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
+		fmt.Println("Invalid session")
 		http.Error(w, "Invalid session", http.StatusUnauthorized)
 		return
 	}
 
 	_, err = database.Db.Exec(`DELETE FROM sessions WHERE session = ?`, sessionCookie.Value)
 	if err != nil {
+		fmt.Println("failed to delete session")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "failed delete"})
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{Name: "session", Value: "", Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "session", Value: "",  MaxAge: -1})
 
 	websocket.OnlineConnections.Mutex.Lock()
 
@@ -246,7 +249,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create post: " + err.Error()})
 		return
 	}
-
+	fmt.Println("Post created successfully")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Post created successfully"})
 }

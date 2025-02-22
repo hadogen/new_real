@@ -1,192 +1,257 @@
-import { getCurrentUsername } from './utils.js';
-import { fetchProtectedResource } from './posts.js';
-window.sendPrivateMessage = sendPrivateMessage;
+import { getCurrentUsername } from "./utils.js";
+import { fetchProtectedResource } from "./posts.js";
 
 export let ws = null;
 
+let activeUsers = [];
+let allUsers = [];
+
+export let selectedUser = null;
+
 export async function ConnectWebSocket() {
-    try {
-        ws = new WebSocket("ws://localhost:8080/ws");
-        
-        ws.onopen = () => {
-            console.log("websocket connection opened");
-        };
-        
-        ws.onclose = () => {
-            console.log("websocket closed successfully");
-        };
-        
-        ws.onerror = (e) => {
-            console.error("websocket error:", e);
-            setTimeout(ConnectWebSocket, 3000);
-        };
-        
-        ws.onmessage = async function(event) {
-            const messageList = document.getElementById('messageList');
-            const messageBoxContent = document.getElementById('messageBoxContent');
+  try {
+    ws = new WebSocket("ws://localhost:8080/ws");
 
-            if (!messageList) return;
+    ws.onopen = () => {
+      console.log("WebSocket connection opened");
+      ws.send(JSON.stringify({ type: "requestUsers" }));
+    };
 
-            const data = JSON.parse(event.data);
-            const messageItem = document.createElement('li');
-            const timeFormatted = new Date(data.time).toLocaleTimeString(); 
-            const currentUsername = await getCurrentUsername();
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+        ws = null;
+    };
 
-            messageItem.classList.add('message-item');
-            messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
-            messageList.appendChild(messageItem);
-            messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
-            
-            fetchMessages(data.sender, currentUsername);
-        };
-    } catch (error) {
-        console.error("Error connecting to WebSocket:", error);
-    }
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    ws.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
+
+      switch (data.type) {
+        case "userList":
+          const currentUsername = await getCurrentUsername();
+          activeUsers = data.users.filter(
+            (user) => user !== currentUsername
+          );
+          updateUserList(activeUsers);
+          break;
+
+        case "userStatus":
+          const currentUser = await getCurrentUsername();
+          if (data.username !== currentUser) {
+            updateUserStatus(data.username, data.online);
+          }
+          break;
+
+        case "private":
+          handlePrivateMessage(data);
+          break;
+
+        default:
+          console.log("Unknown message type:", data.type);
+      }
+    };
+  } catch (error) {
+    console.error("Error connecting to WebSocket:", error);
+  }
 }
 
-let selectedUser = null;
+
+
+function updateUserStatus(username, online) {
+  const userList = document.getElementById("userList");
+  if (!userList) return;
+
+  const userItems = userList.getElementsByTagName("li");
+  for (let li of userItems) {
+    if (li.textContent.startsWith(username)) {
+      const status = li.querySelector("span");
+      if (online) {
+        if (!status) {
+          const newStatus = document.createElement("span");
+          newStatus.textContent = " (active)";
+          newStatus.style.color = "#4CAF50";
+          li.appendChild(newStatus);
+        }
+      } else if (status) {
+        li.removeChild(status);
+      }
+      break;
+    }
+  }
+}
+
+let messages = {};
+let unreadCounts = {};
+
+function handlePrivateMessage(data) {
+  if (!messages[data.sender]) messages[data.sender] = [];
+  messages[data.sender].push(data);
+
+  if (selectedUser !== data.sender) {
+    showNotification(data.sender);
+    unreadCounts[data.sender] = (unreadCounts[data.sender] || 0) + 1;
+    updateUserList(activeUsers); 
+  }
+
+  if (selectedUser === data.sender) {
+    appendMessageToChat(data);
+  }
+}
+function appendMessageToChat(data) {
+    const messageList = document.getElementById("messageList");
+    if (!messageList) return;
+  
+    const messageItem = document.createElement('li');
+    const timeFormatted = new Date(data.time).toLocaleTimeString();
+    messageItem.textContent = `${data.sender} [${timeFormatted}]: ${data.message}`;
+    messageList.appendChild(messageItem);
+  
+    // Scroll to bottom
+    const messageBoxContent = document.getElementById("messageBoxContent");
+    messageBoxContent.scrollTop = messageBoxContent.scrollHeight;
+  }
 
 export async function fetchAllUsers() {
-    try {
-        const users = await fetchProtectedResource('/all-users');
-        const userList = document.getElementById('userList');
-        const currentUsername = await getCurrentUsername();
-        
-        if (!users) {
-            userList.innerHTML = '';
-            return;
-        }
-        userList.innerHTML = '';
+  try {
+    const currentUsername = await getCurrentUsername();
+    const users = await fetchProtectedResource("/all-users");
 
-        const otherUsers = users.filter(user => user !== currentUsername);
-    
-        otherUsers.forEach(user => {
-            const userItem = document.createElement('li');
-            userItem.classList.add('user-item');
-            userItem.textContent = user;
-
-            userItem.addEventListener('click', async () => {
-                selectedUser = user;
-                await loadChatWithUser(selectedUser);
-                document.getElementById('messageBox').classList.remove('collapsed');
-                document.getElementById('selectedUserName').textContent = selectedUser;
-            });
-            userList.appendChild(userItem);
-        });
-    } catch (error) {
-        console.error('Error fetching users:', error);
-    }
+    const otherUsers = users.filter((user) => user !== currentUsername);
+    allUsers = otherUsers;
+    updateUserList();
+  } catch (error) {
+    console.error("Error fetching users:", error);
+  }
 }
 
 export async function loadChatWithUser(user) {
-    const currentUsername = await getCurrentUsername();
-    await fetchMessages(user, currentUsername);
-}
+  const currentUsername = await getCurrentUsername();
+  if (!currentUsername) return;
 
-let isFetching = false;
-let lastLoadedTimestamp = null;
+  const messageList = document.getElementById("messageList");
+  if (!messageList) return;
+
+  const messages = await fetchProtectedResource(
+    `/private-messages?sender=${currentUsername}&receiver=${user}`
+  );
+
+  messageList.innerHTML = "";
+
+  if (Array.isArray(messages)) {
+    messages.forEach((msg) => {
+      const messageItem = document.createElement("li");
+      const timeFormatted = new Date(msg.created_at).toLocaleTimeString();
+      messageItem.textContent = `${msg.sender} [${timeFormatted}]: ${msg.message}`;
+      messageList.appendChild(messageItem);
+    });
+  }
+
+  const messageBoxContent = document.getElementById("messageBoxContent");
+  messageBoxContent.scrollTop = messageBoxContent.scrollHeight;
+}
 
 export async function sendPrivateMessage() {
-    const messageInput = document.getElementById('messageInput');
-    const message = messageInput.value.trim();
-    
-    if (message && selectedUser && ws) {
-        const currentUsername = await getCurrentUsername();
-        ws.send(JSON.stringify({
-            type: "message",
-            sender: currentUsername,
-            receiver: selectedUser,
-            message: message
-        }));
+  const messageInput = document.getElementById("messageInput");
+  const message = messageInput.value.trim();
 
-        const messageElement = document.createElement('li');
-        messageElement.textContent = `${currentUsername}: ${message}`;
-        const messageList = document.getElementById('messageList');
-        messageList.appendChild(messageElement);
-        const messageBoxContent = document.getElementById('messageBoxContent');
-        messageBoxContent.scrollTop = messageBoxContent.scrollHeight; 
-        messageInput.value = '';
-        fetchAllUsers();    
-    }
-}
-
-export async function fetchMessages(sender, receiver, older = false) {
-    if (isFetching) return;
-    isFetching = true;
-
+  if (message && selectedUser && ws) {
     const currentUsername = await getCurrentUsername();
-    let url = `/private-messages?sender=${sender}&receiver=${receiver || currentUsername}`;
-    
-    if (older && lastLoadedTimestamp) {
-        url += `&before=${lastLoadedTimestamp}`;
+    if (!currentUsername) return;
+
+    ws.send(
+      JSON.stringify({
+        type: "message",
+        sender: currentUsername,
+        receiver: selectedUser,
+        message: message,
+        time: new Date().toISOString(),
+      })
+    );
+
+    messageInput.value = "";
+
+    const messageList = document.getElementById("messageList");
+    if (messageList) {
+      const messageItem = document.createElement("li");
+      const timeFormatted = new Date().toLocaleTimeString();
+      messageItem.textContent = `${currentUsername} [${timeFormatted}]: ${message}`;
+      messageList.appendChild(messageItem);
+
+      const messageBoxContent = document.getElementById("messageBoxContent");
+      messageBoxContent.scrollTop = messageBoxContent.scrollHeight;
     }
-
-    try {
-        const messages = await fetchProtectedResource(url);
-        if (!Array.isArray(messages) || messages.length === 0) {
-            console.log("No more messages to load.");
-            isFetching = false;
-            return;
-        }
-
-        const messageList = document.getElementById("messageList");
-
-        if (!older) {
-            messageList.innerHTML = ""; 
-        }
-
-        messages.reverse().forEach((msg, index) => {
-            const messageElement = document.createElement("li");
-            const timeFormatted = new Date(msg.created_at).toLocaleTimeString();
-            messageElement.textContent = `${msg.sender} [${timeFormatted}]: ${msg.message}`;
-            
-            if (older) {
-                messageList.prepend(messageElement); 
-            } else {
-                messageList.appendChild(messageElement); 
-            }
-            if (index === messages.length - 1) {
-                lastLoadedTimestamp = msg.created_at; 
-            }
-        });
-        isFetching = false;
-    } catch (error) {
-        console.error("Error fetching messages:", error);
-        isFetching = false;
-    }
+  }
 }
 
-document.getElementById('messageBoxContent')?.addEventListener('scroll', debounce(async function () {
-    const messageBoxContent = document.getElementById('messageBoxContent');
-    
-    if (isFetching) {
-        return;
-    }
+document.getElementById("toggleMessageBox")?.addEventListener("click", () => {
+  const messageBox = document.getElementById("messageBox");
+  const toggleButton = document.getElementById("toggleMessageBox");
 
-    if (messageBoxContent.scrollTop === 0) { 
-        console.log("loading another 10 messages");
-        const currentUsername = await getCurrentUsername();
-        fetchMessages(selectedUser, currentUsername, true); 
-    }
-}, 200));
-
-function debounce(func, delay) {
-    let timer;
-    return function() {
-        clearTimeout(timer);
-        timer = setTimeout(func, delay);
-    };
-}
-
-document.getElementById('toggleMessageBox')?.addEventListener('click', () => {
-    const messageBox = document.getElementById('messageBox');
-    const toggleButton = document.getElementById('toggleMessageBox');
-    
-    if (messageBox.classList.contains('collapsed')) {
-        messageBox.classList.remove('collapsed');
-        toggleButton.textContent = '▼';
-    } else {
-        messageBox.classList.add('collapsed');
-        toggleButton.textContent = '▲';
-    }
+  if (messageBox.classList.contains("collapsed")) {
+    messageBox.classList.remove("collapsed");
+    toggleButton.textContent = "▼";
+  } else {
+    messageBox.classList.add("collapsed");
+    toggleButton.textContent = "▲";
+    toggleButton.style.marginTop = "0";
+  }
 });
+
+
+
+
+function showNotification(sender) {
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.textContent = `New message from ${sender}`;
+    document.body.appendChild(notification);
+  
+    setTimeout(() => {
+      notification.remove();
+    }, 5000);
+  }
+  
+  function updateUserList(activeUsers = []) {
+    const userList = document.getElementById("userList");
+    if (!userList) return;
+  
+    userList.innerHTML = "";
+  
+    allUsers.forEach(user => {
+      const li = document.createElement('li');
+      li.textContent = user;
+  
+      if (unreadCounts[user] > 0) {
+        const badge = document.createElement('span');
+        badge.textContent = ` (${unreadCounts[user]})`;
+        badge.style.color = 'red';
+        li.appendChild(badge);
+      }
+  
+      if (activeUsers.includes(user)) {
+        const status = document.createElement('span');
+        status.textContent = " (active)";
+        status.style.color = "#4CAF50";
+        li.appendChild(status);
+      }
+  
+      li.addEventListener('click', async () => {
+        selectedUser = user;
+        unreadCounts[user] = 0; 
+        updateUserList(activeUsers); 
+       
+        await loadChatWithUser(user);
+        
+       
+        const chatHeader = document.getElementById("chatHeader");
+        if (chatHeader) {
+          chatHeader.textContent = `Chat with ${user}`;
+        }
+      });
+  
+      userList.appendChild(li);
+    });
+  }

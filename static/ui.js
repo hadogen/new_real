@@ -4,7 +4,7 @@ import {handleLogin, handleRegister} from './auth.js'
 import {FilterByCategory, FilterByCreatedPosts, FilterByLikedPosts} from './filters.js'
 import { sendPrivateMessage} from './websocket.js'
 import { getCurrentUsername } from './utils.js'
-
+const activeListeners = new Map();
 
 const sectionTemplates = {
     login: `
@@ -36,40 +36,39 @@ const sectionTemplates = {
             </form>
         </div>
     `,
-    posts:  `
-    <div class="section" id="posts">
-        <h2>Posts</h2>
-        <div class="post-controls">
-            <form id="createPostForm">
-                <input type="text" id="postTitle" placeholder="Title" required>
-                <textarea id="postContent" placeholder="Content" required></textarea>
-                <select id="postCategory" required>
-                    <option value="Technology">Technology</option>
-                    <option value="Science">Science</option>
-                    <option value="Art">Art</option>
-                </select>
-                <button type="submit">Create Post</button>
-            </form>
-            
+    posts: `
+        <div class="section" id="posts">
+            <h2>Posts</h2>
+            <div class="post-controls">
+                <form id="createPostForm">
+                    <input type="text" id="postTitle" placeholder="Title" required>
+                    <textarea id="postContent" placeholder="Content" required></textarea>
+                    <select id="postCategory" required>
+                        <option value="Technology">Technology</option>
+                        <option value="Science">Science</option>
+                        <option value="Art">Art</option>
+                    </select>
+                    <button type="submit">Create Post</button>
+                </form>
+                
                 <div>
-                <label for="categoryFilter">Filter by Category:</label>
-                <select id="categoryFilter">
-                    <option value="">All</option>
-                    <option value="Technology">Technology</option>
-                    <option value="Science">Science</option>
-                    <option value="Art">Art</option>
-                    <option value="Music">Music</option>
-                    <option value="Sports">Sports</option>
-                    <!-- Add more categories as needed -->
-                </select>
-                <button id="btn-filter">Apply</button>
-                <button id="btn-filter-created">My Posts</button>
-                <button id="btn-filter-liked">Liked Posts</button>
+                    <label for="categoryFilter">Filter by Category:</label>
+                    <select id="categoryFilter">
+                        <option value="">All</option>
+                        <option value="Technology">Technology</option>
+                        <option value="Science">Science</option>
+                        <option value="Art">Art</option>
+                        <option value="Music">Music</option>
+                        <option value="Sports">Sports</option>
+                    </select>
+                    <button id="btn-filter">Apply</button>
+                    <button id="btn-filter-created">My Posts</button>
+                    <button id="btn-filter-liked">Liked Posts</button>
+                </div>
             </div>
+            <div id="postFeed"></div>
         </div>
-        <div id="postFeed"></div>
-    </div>
-`,
+    `,
     comments: `
         <div class="section" id="comments">
             <h2>Comments</h2>
@@ -80,94 +79,106 @@ const sectionTemplates = {
             </form>
             <div id="commentFeed"></div>
         </div>
-    `,
+    `
 };
 
+function cleanupEventListeners() {
+    for (const [element, listeners] of activeListeners.entries()) {
+        for (const { event, handler } of listeners) {
+            element.removeEventListener(event, handler);
+        }
+    }
+    activeListeners.clear();
+}
+
+function addTrackedEventListener(element, event, handler) {
+    if (!element) return;
+    
+    if (activeListeners.has(element)) {
+        const listeners = activeListeners.get(element);
+        const existingListener = listeners.find(l => l.event === event);
+        if (existingListener) {
+            element.removeEventListener(event, existingListener.handler);
+            listeners.splice(listeners.indexOf(existingListener), 1);
+        }
+    }
+
+    element.addEventListener(event, handler);
+    
+    if (!activeListeners.has(element)) {
+        activeListeners.set(element, []);
+    }
+    activeListeners.get(element).push({ event, handler });
+}
+
 export async function ShowSection(sectionId) {
+    cleanupEventListeners();
+    
     const dynamicContent = document.getElementById("dynamicContent");
     dynamicContent.innerHTML = sectionTemplates[sectionId] || "<p>Section not found.</p>";
 
-    const navBack = document.getElementById("navBack");
-    const navLogout = document.getElementById("navLogout");
-    const navLogin = document.getElementById("navLogin");
-    const navRegister = document.getElementById("navRegister");
-    
     const username = await getCurrentUsername();
-    
-    if (navBack) navBack.style.display = ["posts", "comments"].includes(sectionId) ? "block" : "none";
-    if (navLogout) navLogout.style.display = username ? "block" : "none";
-    if (navLogin) navLogin.style.display = username ? "none" : "block";
-    if (navRegister) navRegister.style.display = username ? "none" : "block";
-    setupEventListeners(sectionId);
-}
+    const navElements = {
+        navBack: document.getElementById("navBack"),
+        navLogout: document.getElementById("navLogout"),
+        navLogin: document.getElementById("navLogin"),
+        navRegister: document.getElementById("navRegister")
+    };
 
-function setupEventListeners(sectionId) {
-    const registerForm = document.getElementById("registerForm");
-    if (sectionId === "register" && registerForm) {
-        registerForm.removeEventListener("submit", handleRegister);
-        registerForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            await handleRegister(e);
-        });
+    if (navElements.navBack) {
+        navElements.navBack.style.display = ["posts", "comments"].includes(sectionId) ? "block" : "none";
+    }
+    if (navElements.navLogout) {
+        navElements.navLogout.style.display = username ? "block" : "none";
+    }
+    if (navElements.navLogin) {
+        navElements.navLogin.style.display = username ? "none" : "block";
+    }
+    if (navElements.navRegister) {
+        navElements.navRegister.style.display = username ? "none" : "block";
     }
 
-    const loginForm = document.getElementById("loginForm");
-    if (sectionId === "login" && loginForm) {
-        loginForm.removeEventListener("submit", handleLogin);
-        loginForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            await handleLogin(e);
-        });
-    }
+    const eventSetup = {
+        register: () => {
+            const form = document.getElementById("registerForm");
+            addTrackedEventListener(form, "submit", async (e) => {
+                e.preventDefault();
+                await handleRegister(e);
+            });
+        },
+        login: () => {
+            const form = document.getElementById("loginForm");
+            addTrackedEventListener(form, "submit", async (e) => {
+                e.preventDefault();
+                console.log("Login");
+                await handleLogin(e);
+            });
+        },
+        posts: () => {
+            const createPostForm = document.getElementById("createPostForm");
+            const filterBtn = document.getElementById("btn-filter");
+            const filterLikedBtn = document.getElementById("btn-filter-liked");
+            const filterCreatedBtn = document.getElementById("btn-filter-created");
+            const sendMessageBtn = document.getElementById("sendMessageButton");
 
-    // Create post form
-    const createPostForm = document.getElementById("createPostForm");
-    const filter = document.getElementById("btn-filter");
-    const filterLiked = document.getElementById("btn-filter-liked");
-    const filterCreated = document.getElementById("btn-filter-created");
-    
-    if (sectionId === "posts") {
-        if (createPostForm) {
-            createPostForm.removeEventListener("submit", handleCreatePost);
-            createPostForm.addEventListener("submit", async (e) => {
+            addTrackedEventListener(createPostForm, "submit", async (e) => {
                 e.preventDefault();
                 await handleCreatePost(e);
             });
+            addTrackedEventListener(filterBtn, "click", FilterByCategory);
+            addTrackedEventListener(filterLikedBtn, "click", FilterByLikedPosts);
+            addTrackedEventListener(filterCreatedBtn, "click", FilterByCreatedPosts);
+            addTrackedEventListener(sendMessageBtn, "click", sendPrivateMessage);
+        },
+        comments: () => {
+            const form = document.getElementById("createCommentForm");
+            addTrackedEventListener(form, "submit", async (e) => {
+                e.preventDefault();
+                await handleCreateComment(e);
+            });
         }
-        
-        if (filter) {
-            filter.removeEventListener("click", FilterByCategory);
-            filter.addEventListener("click", FilterByCategory);
-        }
-        
-        if (filterLiked) {
-            filterLiked.removeEventListener("click", FilterByLikedPosts);
-            filterLiked.addEventListener("click", FilterByLikedPosts);
-        }
-        
-        if (filterCreated) {
-            filterCreated.removeEventListener("click", FilterByCreatedPosts);
-            filterCreated.addEventListener("click", FilterByCreatedPosts);
-        }
-
-        const sendMessageButton = document.getElementById("sendMessageButton");
-        if (sendMessageButton) {
-            sendMessageButton.removeEventListener("click", sendPrivateMessage);
-            sendMessageButton.addEventListener("click", sendPrivateMessage);
-        }
-    }
-
-    // Create comment form
-    const createCommentForm = document.getElementById("createCommentForm");
-    if (sectionId === "comments" && createCommentForm) {
-        createCommentForm.removeEventListener("submit", handleCreateComment);
-        createCommentForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            await handleCreateComment(e);
-        });
+    };
+    if (eventSetup[sectionId]) {
+        eventSetup[sectionId]();
     }
 }
-
-
-
-
