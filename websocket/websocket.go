@@ -48,6 +48,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	OnlineConnections.Mutex.Lock()
 	OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username], conn)
+	fmt.Println("this user ",username, "has these connections: ", len(OnlineConnections.Clients[username]))
 	OnlineConnections.Mutex.Unlock()
 
 	broadcastUserStatus(username, true)
@@ -57,7 +58,10 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err)
+			
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure){
+				log.Printf("unexpected connection closure: %v", err)
+			}
 			break
 		}
 
@@ -127,7 +131,7 @@ func handlePrivateMessage(messageData struct {
 
 func sendOnlineUsers(conn *websocket.Conn) {
 	OnlineConnections.Mutex.Lock()
-	activeUsers := make([]string, 0, len(OnlineConnections.Clients))
+	activeUsers := make([]string, len(OnlineConnections.Clients))
 	for user := range OnlineConnections.Clients {
 		activeUsers = append(activeUsers, user)
 	}
@@ -155,21 +159,21 @@ func broadcastUserStatus(username string, online bool) {
 }
 
 func handleDisconnection(username string, conn *websocket.Conn) {
-	OnlineConnections.Mutex.Lock()
-	defer OnlineConnections.Mutex.Unlock()
+    OnlineConnections.Mutex.Lock()
+    defer OnlineConnections.Mutex.Unlock()
 
-	if connections, ok := OnlineConnections.Clients[username]; ok {
-		newConns := make([]*websocket.Conn, 0)
-		for _, c := range connections {
-			if c != conn {
-				newConns = append(newConns, c)
-			}
-		}
-		OnlineConnections.Clients[username] = newConns
+    if connections, ok := OnlineConnections.Clients[username]; ok {
+        newConns := make([]*websocket.Conn, 0)
+        for _, c := range connections {
+            if c != conn {
+                newConns = append(newConns, c)
+            }
+        }
+        OnlineConnections.Clients[username] = newConns
 
-		if len(newConns) == 0 {
-			delete(OnlineConnections.Clients, username)
-			broadcastUserStatus(username, false)
-		}
-	}
+        if len(newConns) == 0 {
+            delete(OnlineConnections.Clients, username)
+            go broadcastUserStatus(username, false) 
+        }
+    }
 }

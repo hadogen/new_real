@@ -148,7 +148,7 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
 		posts = append(posts, post)
 	}
 
-	// Return an empty array if no posts are found
+	// emty arr if no data
 	if posts == nil {
 		posts = []struct {
 			ID        string `json:"id"`

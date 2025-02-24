@@ -7,6 +7,7 @@ import (
 	database "main/Database"
 	websocket "main/websocket"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,7 +15,6 @@ import (
 )
 
 type User struct {
-	ID        string `json:"id"`
 	Nickname  string `json:"nickname"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
@@ -31,7 +31,39 @@ type Post struct {
 	CreatedAt string `json:"created_at"`
 }
 
+func ParseInput(nickname, email, firstname, lastname, password string) bool {
+	if nickname == "" || email == "" || firstname == "" || lastname == "" || password == "" {
+		return false
+	}
+
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	if !emailRegex.MatchString(email) {
+		return false
+	}
+
+	nicknameRegex := regexp.MustCompile(`^[a-zA-Z0-9_-]{3,30}$`)
+	if !nicknameRegex.MatchString(nickname) {
+		return false
+	}
+
+	nameRegex := regexp.MustCompile(`^[a-zA-Z\s-]{2,50}$`)
+	if !nameRegex.MatchString(firstname) || !nameRegex.MatchString(lastname) {
+		return false
+	}
+
+	if len(password) < 8 {
+		return false
+	}
+
+	return true
+}
+
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
+		return
+	}
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -40,10 +72,9 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate user data
-	if user.Nickname == "" || user.Email == "" || user.Password == "" {
+	if !ParseInput(user.Nickname, user.Email, user.FirstName, user.LastName, user.Password) {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Missing required fields"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Not allowed"})
 		return
 	}
 
@@ -54,8 +85,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.Password = string(hashedPassword)
-
-	user.ID = uuid.New().String()
 
 	_, err = database.Db.Exec(`
         INSERT INTO users ( nickname, email, password, age, gender, first_name, last_name)
@@ -130,7 +159,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set session cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:    "session",
 		Value:   session,
@@ -139,7 +167,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	fmt.Println("session created", session)
 
-	// Store session in database
 	_, err = database.Db.Exec(`
         INSERT INTO sessions (session, nickname, expiration)
         VALUES (?, ?, ?)
@@ -180,7 +207,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{Name: "session", Value: "",  MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "session", Value: "", MaxAge: -1})
 
 	websocket.OnlineConnections.Mutex.Lock()
 
@@ -210,7 +237,6 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get username from session
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)

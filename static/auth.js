@@ -78,18 +78,45 @@ export async function  handleRegister(){
 }
 
 export async function logout() {
-    const response = await fetch("/logout", {
-        method: "POST",
-        credentials: "include",
-    });
+    try {
+        const response = await fetch("/logout", {
+            method: "POST",
+            credentials: "include",
+        });
 
-    if (response.ok) {
-        ws.close(1000, "closed succesfully")
-        ShowSection("login");
-        document.getElementById("navLogout").style.display = "none";
-        document.getElementById("navLogin").style.display = "block";
-        document.getElementById("message").textContent = "Logged out successfully";
-    } else {
+        if (response.ok) {
+            if (ws) {
+                ws.close(1000, "Logged out successfully");
+            }
+
+            document.getElementById("navLogout").style.display = "none";
+            document.getElementById("navLogin").style.display = "block";
+            document.getElementById("navRegister").style.display = "block";
+            
+            document.getElementById("postFeed").innerHTML = "";
+            
+            const userListContainer = document.getElementById("userListContainer");
+            if (userListContainer) {
+                userListContainer.style.display = "none";
+            }
+
+            const messageBox = document.getElementById("messageBox");
+            if (messageBox) {
+                messageBox.style.display = "none";
+            }
+
+            document.getElementById("message").textContent = "Logged out successfully";
+            
+            ShowSection("login");
+            
+            return true;
+        } else {
+            document.getElementById("message").textContent = "Logout failed";
+            return false;
+        }
+    } catch (error) {
+        console.error("Logout error:", error);
         document.getElementById("message").textContent = "Logout failed";
+        return false;
     }
 }
