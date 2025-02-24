@@ -22,7 +22,7 @@ export async function handleCreatePost() {
         });
 
         if (!response) {
-            throw new Error(response.error || "Failed to create post");
+            throw new Error("Failed to create post");
         }
 
         document.getElementById("message").textContent = response.message || "Post created successfully!";
@@ -39,20 +39,17 @@ export async function fetchProtectedResource(url, options = {}) {
             ...options,
             credentials: 'include'
         });
-        
+
+        const data = await response.json();
+
         if (response.status === 401) {
-            console.log("Unauthorized");
-            ShowSection("login");
-            document.getElementById("message").textContent = "Please log in";
-            return null;
+            throw new Error("Please log in.");
         }
-        if (response.status === 204){
-            console.log("No content");
-            return null;
-        }
-        return await response.json();
+        return data;
     } catch (error) {
-        console.error("Error fetching resource:", error);
+        document.getElementById("message").textContent = error.message;
+        ShowSection("login");
+        return null;
     }
 }
 
@@ -139,8 +136,7 @@ export async function LikePost(postId) {
         }
 
         likeButton.textContent = `Like (${likeCount})`;
-        
-        document.getElementById("message").textContent = response.message;
+    
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }
@@ -168,7 +164,6 @@ export async function DislikePost(postId) {
 
         dislikeButton.textContent = `Dislike (${dislikeCount})`;
 
-        document.getElementById("message").textContent = response.message;
     } catch (error) {
         document.getElementById("message").textContent = error.message;
     }

@@ -59,8 +59,14 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure){
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway){
 				log.Printf("unexpected connection closure: %v", err)
+			}
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure){
+				OnlineConnections.Mutex.Lock()
+				delete(OnlineConnections.Clients, username)
+				OnlineConnections.Mutex.Unlock()
+				broadcastUserStatus(username, false)
 			}
 			break
 		}
@@ -126,17 +132,21 @@ func handlePrivateMessage(messageData struct {
 				log.Println("Error sending message to receiver:", err)
 			}
 		}
+	} else{
+		fmt.Println(messageData.Receiver, "is not online")
 	}
 }
 
 func sendOnlineUsers(conn *websocket.Conn) {
 	OnlineConnections.Mutex.Lock()
-	activeUsers := make([]string, len(OnlineConnections.Clients))
+	defer 	OnlineConnections.Mutex.Unlock()
+
+	activeUsers := make([]string, 0 ,len(OnlineConnections.Clients))
 	for user := range OnlineConnections.Clients {
 		activeUsers = append(activeUsers, user)
 	}
-	OnlineConnections.Mutex.Unlock()
-	fmt.Println("active users: ", activeUsers)
+	fmt.Println("active users: ", len(activeUsers), activeUsers)
+
 	conn.WriteJSON(map[string]interface{}{
 		"type":  "userList",
 		"users": activeUsers,

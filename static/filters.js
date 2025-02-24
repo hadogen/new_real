@@ -17,7 +17,7 @@ export async function FilterByCategory() {
             method: "GET"
         });
         if (!posts) {
-            throw new Error(posts.error || "Failed to fetch posts");
+            throw new Error("Failed to fetch posts");
         }
 
         const postFeed = document.getElementById("postFeed");
@@ -55,7 +55,7 @@ export async function FilterByCreatedPosts() {
             method: "GET"
         });
         if (!posts) {
-            throw new Error(posts.error || "Failed to fetch posts");
+            throw new Error("Failed to fetch posts");
         }
 
         const postFeed = document.getElementById("postFeed");
@@ -93,7 +93,7 @@ export async function FilterByLikedPosts() {
             method : "GET"
         });
         if (!posts) {
-            throw new Error(posts.error || "Failed to fetch posts");
+            throw new Error("Failed to fetch posts");
         }
 
         const postFeed = document.getElementById("postFeed");

@@ -39,7 +39,6 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 		if err != nil {
 			log.Println("No session cookie found")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
 		}
 
@@ -57,7 +56,6 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 			}
 			log.Println("Invalid session")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
 		}
 
@@ -72,7 +70,7 @@ func AutoLoginHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
+	w.Header().Set("Content-Type", "application/json")
 	var username string
 	err = database.Db.QueryRow(`
 		SELECT nickname FROM sessions 

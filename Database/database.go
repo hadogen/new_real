@@ -46,12 +46,10 @@ func createTables(db *sql.DB) error {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comments (
 		id TEXT PRIMARY KEY,
 		post_id TEXT,
-		user_id TEXT,
 		username TEXT,
 		content TEXT,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (post_id) REFERENCES posts(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	
 	);`)
 	if err != nil {
 		return fmt.Errorf("failed to create comments table: %v", err)
@@ -59,20 +57,18 @@ func createTables(db *sql.DB) error {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comment_likes (
 		id TEXT PRIMARY KEY,
 		comment_id TEXT,
-		user_id TEXT,
-		FOREIGN KEY (comment_id) REFERENCES comments(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
+		username TEXT
+	
 	);`)
 	if err != nil {
 		return fmt.Errorf("failed to create comment_likes table: %v", err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comment_dislikes (
-		id TEXT PRIMARY KEY,
-		comment_id TEXT,
-		user_id TEXT,
-		FOREIGN KEY (comment_id) REFERENCES comments(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
+		id TEXT PRIMARY KEY NOT NULL,
+		comment_id TEXT NOT NULL,
+		username TEXT NOT NULL,
+		FOREIGN KEY (comment_id) REFERENCES comments(id)
 	);`)
 	if err != nil {
 		return fmt.Errorf("failed to create comment_dislikes table: %v", err)
@@ -80,10 +76,10 @@ func createTables(db *sql.DB) error {
 
 	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS private_messages (
-		sender TEXT,
-    	receiver TEXT,
-    	message TEXT,
-    	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		sender TEXT NOT NULL,
+    	receiver TEXT	NOT NULL,
+    	message TEXT NOT NULL,
+    	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 	`)
 	if err != nil {
@@ -92,14 +88,12 @@ func createTables(db *sql.DB) error {
 	}
 	_, err = db.Exec(
 		`CREATE TABLE IF NOT EXISTS posts (
-   			id TEXT PRIMARY KEY,
-    user_id TEXT,
-    username TEXT,
-    title TEXT,
-    content TEXT,
+   	id TEXT PRIMARY KEY NOT NULL,
+    username TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
     category TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );`)
 
 	if err != nil {
@@ -111,9 +105,7 @@ func createTables(db *sql.DB) error {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_likes (
 		id TEXT PRIMARY KEY,
 		post_id TEXT,
-		user_id TEXT,
-		FOREIGN KEY (post_id) REFERENCES posts(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
+		username TEXT
 	);`)
 	if err != nil {
 		return fmt.Errorf("failed to create post_likes table: %v", err)
@@ -122,9 +114,8 @@ func createTables(db *sql.DB) error {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_dislikes (
 		id TEXT PRIMARY KEY,
 		post_id TEXT,
-		user_id TEXT,
-		FOREIGN KEY (post_id) REFERENCES posts(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
+		username TEXT
+
 	);`)
 	if err != nil {
 		return fmt.Errorf("failed to create post_dislikes table: %v", err)
@@ -133,8 +124,7 @@ func createTables(db *sql.DB) error {
 		id integer PRIMARY KEY autoincrement,
 		nickname TEXT,
 		session TEXT,
-		expiration DATETIME,
-		FOREIGN KEY (nickname) REFERENCES users(nickname)
+		expiration DATETIME
 	);`)
 	if err != nil {
 		return fmt.Errorf("failed to create sessions table: %v", err)

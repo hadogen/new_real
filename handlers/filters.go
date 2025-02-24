@@ -31,7 +31,6 @@ func GetPostsByCategoryHandler(w http.ResponseWriter, r *http.Request) {
     `, category)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch posts: " + err.Error()})
 		return
 	}
 	defer rows.Close()
@@ -60,7 +59,6 @@ func GetPostsByCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Content, &post.Category, &post.CreatedAt, &post.Likes, &post.Dislikes)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan post: " + err.Error()})
 			return
 		}
 		posts = append(posts, post)
@@ -87,13 +85,12 @@ func GetPostsByCategoryHandler(w http.ResponseWriter, r *http.Request) {
 func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET"{
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	username := r.URL.Query().Get("username")
 	if username == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "User ID is required"})
 		return
 	}
 
@@ -108,12 +105,11 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
             (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) AS likes,
             (SELECT COUNT(*) FROM post_dislikes WHERE post_id = p.id) AS dislikes
         FROM posts p
-        WHERE p.user_id = ?
+        WHERE p.username = ?
         ORDER BY p.created_at DESC
     `, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch posts: " + err.Error()})
 		return
 	}
 	defer rows.Close()
@@ -140,9 +136,9 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
 			Dislikes  int    `json:"dislikes"`
 		}
 		err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Content, &post.Category, &post.CreatedAt, &post.Likes, &post.Dislikes)
+		fmt.Println("posts filterd", post.ID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan post: " + err.Error()})
 			return
 		}
 		posts = append(posts, post)
@@ -169,13 +165,11 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
 func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET"{
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed" })
 		return
 	}
 	username := r.URL.Query().Get("username")
 	if username == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "User ID is required"})
 		return
 	}
 
@@ -191,12 +185,11 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
             (SELECT COUNT(*) FROM post_dislikes WHERE post_id = p.id) AS dislikes
         FROM posts p
         INNER JOIN post_likes pl ON p.id = pl.post_id
-        WHERE pl.user_id = ?
+        WHERE pl.username = ?
         ORDER BY p.created_at DESC
     `, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch posts: " + err.Error()})
 		return
 	}
 	defer rows.Close()
@@ -243,7 +236,8 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
 			Dislikes  int    `json:"dislikes"`
 		}{}
 	}
-
+	
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(posts)
 }

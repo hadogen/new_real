@@ -24,8 +24,9 @@ export async function handleLogin() {
 
         const result = await response.json();
         if (!response.ok) {
-            console.log("Can't Login")
+            document.getElementById("message").textContent = result.error || "Failed to login";
             throw new Error(result.error || "Failed to login");
+
         }
         document.getElementById("navLogout").style.display = "block";
         document.getElementById("navLogin").style.display = "none";
@@ -64,9 +65,11 @@ export async function  handleRegister(){
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(user),
         });
-
+        console.log("resp test")
         const result = await response.json();
+        console.log("result", result)
         if (!response.ok) {
+            document.getElementById("message").textContent = result.error;
             throw new Error(result.error || "Failed to register");
         }
 
@@ -84,17 +87,13 @@ export async function logout() {
             credentials: "include",
         });
 
-        if (response.ok) {
             if (ws) {
                 ws.close(1000, "Logged out successfully");
             }
-
             document.getElementById("navLogout").style.display = "none";
             document.getElementById("navLogin").style.display = "block";
             document.getElementById("navRegister").style.display = "block";
-            
-            document.getElementById("postFeed").innerHTML = "";
-            
+                        
             const userListContainer = document.getElementById("userListContainer");
             if (userListContainer) {
                 userListContainer.style.display = "none";
@@ -104,19 +103,10 @@ export async function logout() {
             if (messageBox) {
                 messageBox.style.display = "none";
             }
-
+            ShowSection("login");
             document.getElementById("message").textContent = "Logged out successfully";
             
-            ShowSection("login");
-            
-            return true;
-        } else {
-            document.getElementById("message").textContent = "Logout failed";
-            return false;
-        }
-    } catch (error) {
-        console.error("Logout error:", error);
-        document.getElementById("message").textContent = "Logout failed";
-        return false;
+        }  catch (error) {
+        console.log("Logout error:", error);
     }
 }

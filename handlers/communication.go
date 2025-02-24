@@ -18,10 +18,10 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	receiver := r.URL.Query().Get("receiver")
 	before := r.URL.Query().Get("before")
 	// limit := r.URL.Query().Get("limit")
+	w.Header().Set("Content-Type", "application/json")
 
 	if sender == "" || receiver == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Sender and Receiver are required"})
 		return
 	}
 
@@ -49,7 +49,6 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch messages: " + err.Error()})
 		return
 	}
 	defer rows.Close()
@@ -74,7 +73,6 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Printf("length of messages : %d\n", len(messages))
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(messages)
 }

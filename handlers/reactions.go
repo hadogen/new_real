@@ -14,7 +14,6 @@ func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	commentID := r.URL.Query().Get("comment_id")
 	if commentID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Comment ID is required"})
 		return
 	}
 
@@ -22,14 +21,12 @@ func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid session"})
 		return
 	}
 
@@ -37,16 +34,15 @@ func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	var likeID string
 	err = database.Db.QueryRow(`
         SELECT id FROM comment_likes
-        WHERE comment_id = ? AND user_id = ?
+        WHERE comment_id = ? AND username = ?
     `, commentID, username).Scan(&likeID)
 	if err == nil {
 		_, err := database.Db.Exec(`
         DELETE FROM comment_likes
-        WHERE comment_id = ? AND user_id = ?
+        WHERE comment_id = ? AND username = ?
     `, commentID, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to remove like"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -57,12 +53,11 @@ func LikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Insert the like into the database
 	likeID = uuid.New().String()
 	_, err = database.Db.Exec(`
-        INSERT INTO comment_likes (id, comment_id, user_id)
+        INSERT INTO comment_likes (id, comment_id, username)
         VALUES (?, ?, ?)
     `, likeID, commentID, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to like comment"})
 		return
 	}
 
@@ -75,7 +70,6 @@ func DislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	commentID := r.URL.Query().Get("comment_id")
 	if commentID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Comment ID is required"})
 		return
 	}
 
@@ -83,14 +77,12 @@ func DislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid session"})
 		return
 	}
 
@@ -98,16 +90,15 @@ func DislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	var dislikeID string
 	err = database.Db.QueryRow(`
         SELECT id FROM comment_dislikes
-        WHERE comment_id = ? AND user_id = ?
+        WHERE comment_id = ? AND username = ?
     `, commentID, username).Scan(&dislikeID)
 	if err == nil {
 		_, err := database.Db.Exec(`
         DELETE FROM comment_dislikes
-        WHERE comment_id = ? AND user_id = ?
+        WHERE comment_id = ? AND username = ?
     `, commentID, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to remove dislike"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -118,12 +109,11 @@ func DislikeCommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Insert the dislike into the database
 	dislikeID = uuid.New().String()
 	_, err = database.Db.Exec(`
-        INSERT INTO comment_dislikes (id, comment_id, user_id)
+        INSERT INTO comment_dislikes (id, comment_id, username)
         VALUES (?, ?, ?)
     `, dislikeID, commentID, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to dislike comment"})
 		return
 	}
 
@@ -140,19 +130,16 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&comment)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Cookie not found"})
 		return
 	}
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Cookie not found in database"})
 		return
 	}
 
@@ -165,7 +152,6 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
     `, commentID, comment.PostID,  username, comment.Content, createdAt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create comment: " + err.Error()})
 		return
 	}
 
@@ -178,7 +164,6 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})
 		return
 	}
 
@@ -196,7 +181,6 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
     `, postID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch comments: " + err.Error()})
 		return
 	}
 	defer rows.Close()
@@ -221,7 +205,6 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&comment.ID, &comment.Username, &comment.Content, &comment.CreatedAt, &comment.Likes, &comment.Dislikes)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan comment: " + err.Error()})
 			return
 		}
 		comments = append(comments, comment)
@@ -248,7 +231,6 @@ func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})
 		return
 	}
 
@@ -256,14 +238,12 @@ func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid session"})
 		return
 	}
 
@@ -271,16 +251,15 @@ func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 	var likeID string
 	err = database.Db.QueryRow(`
         SELECT id FROM post_likes
-        WHERE post_id = ? AND user_id = ?
+        WHERE post_id = ? AND username = ?
     `, postID, username).Scan(&likeID)
 	if err == nil {
 		_, err := database.Db.Exec(`
         DELETE FROM post_likes
-        WHERE post_id = ? AND user_id = ?
+        WHERE post_id = ? AND username = ?
     `, postID, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to remove like"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -291,12 +270,11 @@ func LikePostHandler(w http.ResponseWriter, r *http.Request) {
 	// Insert the like into the database
 	likeID = uuid.New().String()
 	_, err = database.Db.Exec(`
-        INSERT INTO post_likes (id, post_id, user_id)
+        INSERT INTO post_likes (id, post_id, username)
         VALUES (?, ?, ?)
     `, likeID, postID, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to like post"})
 		return
 	}
 
@@ -309,7 +287,6 @@ func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
 	if postID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Post ID is required"})
 		return
 	}
 
@@ -317,14 +294,12 @@ func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid session"})
 		return
 	}
 
@@ -332,16 +307,15 @@ func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	var dislikeID string
 	err = database.Db.QueryRow(`
         SELECT id FROM post_dislikes
-        WHERE post_id = ? AND user_id = ?
+        WHERE post_id = ? AND username = ?
     `, postID, username).Scan(&dislikeID)
 	if err == nil {
 		_, err := database.Db.Exec(`
         DELETE FROM post_dislikes
-        WHERE post_id = ? AND user_id = ?
+        WHERE post_id = ? AND username = ?
     `, postID, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to remove dislike"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -352,12 +326,11 @@ func DislikePostHandler(w http.ResponseWriter, r *http.Request) {
 	// Insert the dislike into the database
 	dislikeID = uuid.New().String()
 	_, err = database.Db.Exec(`
-        INSERT INTO post_dislikes (id, post_id, user_id)
+        INSERT INTO post_dislikes (id, post_id, username)
         VALUES (?, ?, ?)
     `, dislikeID, postID, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to dislike post"})
 		return
 	}
 

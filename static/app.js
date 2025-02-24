@@ -17,18 +17,17 @@ async function checkSession() {
             document.getElementById("navLogout").style.display = "block";
             document.getElementById("navLogin").style.display = "none";
             document.getElementById("navRegister").style.display = "none";
-
             return;
         }
+        throw new Error("Please log in");
 
-        console.log("No valid session found. Redirecting to login.");
+    } catch (error) {
+        console.error('Error checking session:', error);
+        document.getElementById("message").textContent = error.message;
         ShowSection("login");
         document.getElementById("navLogout").style.display = "none";
         document.getElementById("navLogin").style.display = "block";
         document.getElementById("navRegister").style.display = "block";
-    } catch (error) {
-        console.error('Error checking session:', error);
-        ShowSection("login");
     }
 }
 
@@ -47,5 +46,5 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "requestUsers" }));
         }
-    }, 30000);
+    }, 3000);
 });

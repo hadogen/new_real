@@ -31,57 +31,63 @@ type Post struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func ParseInput(nickname, email, firstname, lastname, password string) bool {
+func ParseInput(nickname, email,firstname, lastname, password, gender string , age int) (string , bool){
 	if nickname == "" || email == "" || firstname == "" || lastname == "" || password == "" {
-		return false
+		return "missing input", false
 	}
 
+	if gender != "Male" && gender != "Female" {
+		return "Invalid gender", false
+	}
+
+	if age < 18 || age > 100 {
+		return "Age must be between 18 and 100", false
+	}
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	if !emailRegex.MatchString(email) {
-		return false
+		return "Invalid email format" , false
 	}
 
 	nicknameRegex := regexp.MustCompile(`^[a-zA-Z0-9_-]{3,30}$`)
 	if !nicknameRegex.MatchString(nickname) {
-		return false
+		return "Invalid nickname format", false
 	}
 
 	nameRegex := regexp.MustCompile(`^[a-zA-Z\s-]{2,50}$`)
 	if !nameRegex.MatchString(firstname) || !nameRegex.MatchString(lastname) {
-		return false
+		return "Invalid name format" , false
 	}
 
 	if len(password) < 8 {
-		return false
+		return "The password should at least have 8 characters", false
 	}
 
-	return true
+	return "" , true
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request format"})
 		return
 	}
-
-	if !ParseInput(user.Nickname, user.Email, user.FirstName, user.LastName, user.Password) {
+	errmsg , resp := ParseInput(user.Nickname, user.Email ,user.FirstName, user.LastName, user.Password,user.Gender, user.Age)
+	fmt.Println(errmsg)
+	if !resp{
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Not allowed"})
+		json.NewEncoder(w).Encode(map[string]string{"error": errmsg})
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to process password"})
 		return
 	}
 	user.Password = string(hashedPassword)
@@ -92,7 +98,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     `, user.Nickname, user.Email, user.Password, user.Age, user.Gender, user.FirstName, user.LastName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to register user: " + err.Error()})
 		return
 	}
 
@@ -109,9 +114,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request format"})
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	// Validate credentials
 	if credentials.Login == "" || credentials.Password == "" {
@@ -240,14 +245,12 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "cookie not found"})
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "cookie not found database"})
 		return
 	}
 
@@ -259,7 +262,6 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	err = json.NewDecoder(r.Body).Decode(&post)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
 
@@ -272,7 +274,6 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
     `, postID, username, post.Title, post.Content, post.Category, createdAt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create post: " + err.Error()})
 		return
 	}
 	fmt.Println("Post created successfully")
@@ -342,6 +343,7 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 		}{}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(posts)
 }
@@ -374,16 +376,17 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 func GetCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
-		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"username": username})
 }
