@@ -54,19 +54,19 @@ export async function LoadComments(postId) {
                     <p>${comment.content}</p>
                     <small>Posted by ${comment.username} on ${new Date(comment.created_at).toLocaleString()}</small>
                     <div>
-                        <button class="like-comment-btn" data-comment-id="${comment.id}">Like (${comment.likes || 0})</button>
-                        <button class="dislike-comment-btn" data-comment-id="${comment.id}">Dislike (${comment.dislikes || 0})</button>
+                        <button class="like-btn" data-comment-id="${comment.id}">Like (${comment.likes || 0})</button>
+                        <button class="dislike-btn" data-comment-id="${comment.id}">Dislike (${comment.dislikes || 0})</button>
                     </div>
                 `;
 
                 commentFeed.appendChild(commentElement);
             });
 
-            document.querySelectorAll(".like-comment-btn").forEach(button => {
+            document.querySelectorAll(".like-btn").forEach(button => {
                 button.addEventListener("click", () => LikeComment(button.dataset.commentId));
             });
 
-            document.querySelectorAll(".dislike-comment-btn").forEach(button => {
+            document.querySelectorAll(".dislike-btn").forEach(button => {
                 button.addEventListener("click", () => DislikeComment(button.dataset.commentId));
             });
 

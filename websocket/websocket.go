@@ -59,8 +59,9 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway){
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure){
 				log.Printf("unexpected connection closure: %v", err)
+				break
 			}
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure){
 				OnlineConnections.Mutex.Lock()
