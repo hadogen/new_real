@@ -1,8 +1,9 @@
-import { ShowSection } from './ui.js';
+import { ShowSection, createChatUI } from './ui.js';
 import { LoadPosts, fetchProtectedResource } from './posts.js';
 import { logout } from './auth.js';
 import { ConnectWebSocket, fetchAllUsers } from './websocket.js';
 import { ws } from './websocket.js';
+
 async function checkSession() {
     try {
         const response = await fetch('/auto-login', { credentials: 'include' });
@@ -11,6 +12,7 @@ async function checkSession() {
             console.log("Auto-login with valid session for:", user.username);
             ShowSection("posts");
             await LoadPosts();
+            createChatUI(); 
             await ConnectWebSocket();
             await fetchAllUsers();
 

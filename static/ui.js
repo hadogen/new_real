@@ -182,3 +182,69 @@ export async function ShowSection(sectionId) {
         eventSetup[sectionId]();
     }
 }
+
+// Add these functions to handle chat UI creation/removal
+export function createChatUI() {
+    // Create user list container
+    const userListContainer = document.createElement('div');
+    userListContainer.id = 'userListContainer';
+    userListContainer.innerHTML = `
+        <h2>Active Users</h2>
+        <ul id="userList"></ul>
+    `;
+
+    // Create message box
+    const messageBox = document.createElement('div');
+    messageBox.id = 'messageBox';
+    messageBox.className = 'collapsed';
+    messageBox.innerHTML = `
+        <div id="messageBoxHeader">
+            <div>
+                <h3>Send a Private Message</h3>
+                <h4 id="selectedUserName"></h4>
+            </div>
+            <button id="toggleMessageBox">▼</button>
+        </div>
+        <div id="messageBoxContent">
+            <ul id="messageList"></ul>
+        </div>
+        <input type="text" id="messageInput" placeholder="Type your message" />
+        <button id="sendMessageButton">Send</button>
+    `;
+
+    // Append elements to body
+    document.body.appendChild(userListContainer);
+    document.body.appendChild(messageBox);
+
+    // Setup toggle button listener
+    document.getElementById("toggleMessageBox").addEventListener("click", () => {
+        const messageBox = document.getElementById("messageBox");
+        const toggleButton = document.getElementById("toggleMessageBox");
+        
+        if (messageBox.classList.contains("collapsed")) {
+            messageBox.classList.remove("collapsed");
+            toggleButton.textContent = "▼";
+        } else {
+            messageBox.classList.add("collapsed");
+            toggleButton.textContent = "▲";
+            toggleButton.style.marginTop = "0";
+        }
+    });
+
+    // Setup message input listener
+    const messageInput = document.getElementById("messageInput");
+    const sendMessageButton = document.getElementById("sendMessageButton");
+    sendMessageButton.addEventListener("click", sendPrivateMessage);
+}
+
+export function removeChatUI() {
+    const userListContainer = document.getElementById('userListContainer');
+    const messageBox = document.getElementById('messageBox');
+    
+    if (userListContainer) {
+        userListContainer.remove();
+    }
+    if (messageBox) {
+        messageBox.remove();
+    }
+}
