@@ -48,7 +48,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	OnlineConnections.Mutex.Lock()
 	OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username], conn)
-	fmt.Println("this user ",username, "has these connections: ", len(OnlineConnections.Clients[username]))
+	fmt.Println("this user ", username, "has these connections: ", len(OnlineConnections.Clients[username]))
 	OnlineConnections.Mutex.Unlock()
 
 	broadcastUserStatus(username, true)
@@ -58,17 +58,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure){
-				log.Printf("unexpected connection closure: %v", err)
-				break
-			}
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure){
-				OnlineConnections.Mutex.Lock()
-				delete(OnlineConnections.Clients, username)
-				OnlineConnections.Mutex.Unlock()
-				broadcastUserStatus(username, false)
-			}
+			log.Println("Error reading message:", err)
 			break
 		}
 
@@ -93,7 +83,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			sendOnlineUsers(conn)
 		}
 	}
-
+	fmt.Println("closing connection ", username)
 	handleDisconnection(username, conn)
 }
 
@@ -133,16 +123,16 @@ func handlePrivateMessage(messageData struct {
 				log.Println("Error sending message to receiver:", err)
 			}
 		}
-	} else{
+	} else {
 		fmt.Println(messageData.Receiver, "is not online")
 	}
 }
 
 func sendOnlineUsers(conn *websocket.Conn) {
 	OnlineConnections.Mutex.Lock()
-	defer 	OnlineConnections.Mutex.Unlock()
+	defer OnlineConnections.Mutex.Unlock()
 
-	activeUsers := make([]string, 0 ,len(OnlineConnections.Clients))
+	activeUsers := make([]string, 0, len(OnlineConnections.Clients))
 	for user := range OnlineConnections.Clients {
 		activeUsers = append(activeUsers, user)
 	}
@@ -170,21 +160,22 @@ func broadcastUserStatus(username string, online bool) {
 }
 
 func handleDisconnection(username string, conn *websocket.Conn) {
-    OnlineConnections.Mutex.Lock()
-    defer OnlineConnections.Mutex.Unlock()
+	OnlineConnections.Mutex.Lock()
+	defer OnlineConnections.Mutex.Unlock()
 
-    if connections, ok := OnlineConnections.Clients[username]; ok {
-        newConns := make([]*websocket.Conn, 0)
-        for _, c := range connections {
-            if c != conn {
-                newConns = append(newConns, c)
-            }
-        }
-        OnlineConnections.Clients[username] = newConns
+	if connections, ok := OnlineConnections.Clients[username]; ok {
+		newConns := make([]*websocket.Conn, 0)
+		for _, c := range connections {
+			if c != conn {
+				newConns = append(newConns, c)
+			}
+		}
+		OnlineConnections.Clients[username] = newConns
 
-        if len(newConns) == 0 {
-            delete(OnlineConnections.Clients, username)
-            go broadcastUserStatus(username, false) 
-        }
-    }
+		if len(newConns) == 0 {
+			fmt.Println("loging out bcz no connections left for ", username)
+			delete(OnlineConnections.Clients, username)
+			go broadcastUserStatus(username, false)
+		}
+	}
 }

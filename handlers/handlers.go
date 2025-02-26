@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html"
 	database "main/Database"
 	websocket "main/websocket"
 	"net/http"
@@ -285,7 +286,8 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	postID := uuid.New().String()
 	createdAt := time.Now().Format(time.RFC3339)
-
+	post.Content = html.EscapeString(post.Content)
+	post.Title = html.EscapeString(post.Title)
 	_, err = database.Db.Exec(`
         INSERT INTO posts (id, username, title, content, category, created_at)
         VALUES (?, ?, ?, ?, ?, ?)

@@ -72,7 +72,7 @@ nav button:hover {
   border-radius: 8px;
   width: 200px;
   z-index: 100;
-  display: none; /* Hide by default on mobile */
+  display: block; 
 }
 
 @media (min-width: 992px) {

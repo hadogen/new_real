@@ -1,3 +1,5 @@
+import { logout } from './auth.js';
+
 export async function getCurrentUsername() {
     try {
         const response = await fetch('/current-user');
@@ -13,7 +15,7 @@ export async function getCurrentUsername() {
         }
         return data.username;
     } catch (error) {
-        console.error('Error getting current username:', error.message);
+        console.log('Error getting current username:', error.message);
         return null;
     }
 } 

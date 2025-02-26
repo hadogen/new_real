@@ -27,7 +27,7 @@ export async function ConnectWebSocket() {
     };
 
     ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      console.log("WebSocket error:", error);
     };
 
     ws.onmessage = async (event) => {
@@ -75,12 +75,12 @@ export async function ConnectWebSocket() {
 
 function updateChatUI(isActive) {
   const messageInput = document.getElementById("messageInput");
-  const sendButton = document.getElementById("sendButton");
-  const statusMessage = document.getElementById("statusMessage");
+  const sendButton = document.getElementById("sendMessageButton"); // Changed from "sendButton"
 
-  messageInput.disabled = !isActive;
-  sendButton.disabled = !isActive;
-  statusMessage.textContent = isActive ? "" : "This user is offline. Messages will be sent when they come online.";
+  if (messageInput && sendButton) { // Add null check
+    messageInput.disabled = !isActive;
+    sendButton.disabled = !isActive;
+  }
 }
 
 function updateUserStatus(username, online) {
