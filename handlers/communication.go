@@ -22,6 +22,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	if sender == "" || receiver == "" {
 		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error" : "Bad request"})
 		return
 	}
 
@@ -49,6 +50,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error" : "Interal server error"})
 		return
 	}
 	defer rows.Close()
@@ -59,8 +61,9 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		var sender, receiver, message, createdAt string
 		err := rows.Scan(&sender, &receiver, &message, &createdAt)
 		if err != nil {
+			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan message: " + err.Error()})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan message: "})
 			return
 		}
 

@@ -2,8 +2,13 @@ import {fetchAllUsers} from './websocket.js'
 import  {ShowComments} from  './comments.js';
 import {ShowSection} from './ui.js'
 import { getCurrentUsername } from './utils.js';
+import {logout} from './auth.js'
 
-window.fetchProtectedResource = fetchProtectedResource;
+let isLoading = false;
+let offset = 0;
+let hasMore = true;
+let throttleTimer;
+
 
 export async function handleCreatePost() {
     const post = {
@@ -13,19 +18,20 @@ export async function handleCreatePost() {
     };
 
     try {
-        const response = await fetchProtectedResource("/posts/create", {
+        const response = await fetch("/posts/create", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
             body: JSON.stringify(post),
         });
 
-        if (!response) {
+        if (!response.ok) {
+            if(response.status===401){
+                logout();
+                throw new Error("not auth")
+            }
             throw new Error("Failed to create post");
         }
 
-        document.getElementById("message").textContent = response.message || "Post created successfully!";
+        document.getElementById("message").textContent = "Post created successfully!";
         document.getElementById("createPostForm").reset();
         await LoadPosts(); 
     } catch (error) {
@@ -33,40 +39,47 @@ export async function handleCreatePost() {
     }
 }
 
-export async function fetchProtectedResource(url, options = {}) {
+
+export async function LoadPosts(isInitial = true) {
     try {
-        const response = await fetch(url, {
-            ...options,
-            credentials: 'include'
-        });
-
-        const data = await response.json();
-
-        if (response.status === 401) {
-            throw new Error("Please log in.");
+        if (isInitial) {
+            await ShowSection("posts");
+            offset = 0;
+            hasMore = true;
+            const postFeed = document.getElementById("postFeed");
+            postFeed.innerHTML = "";
         }
-        return data;
-    } catch (error) {
-        document.getElementById("message").textContent = error.message;
-        ShowSection("login");
-        return null;
-    }
-}
 
-export async function LoadPosts() {
-    try {
-        ShowSection("posts")
+        if (!hasMore || isLoading) return;
+
+        isLoading = true;
+        const loadingIndicator = document.createElement("div");
+        loadingIndicator.className = "loading";
+        loadingIndicator.textContent = "Loading posts...";
+        document.getElementById("postFeed").appendChild(loadingIndicator);
+
+        const response = await fetch(`/posts?offset=${offset}` , {
+            method: "GET",
+        }
+        );
+
+        loadingIndicator.remove();
+        const posts = await response.json();
+        if (!response.ok) {
+            if (response.status===401){
+                logout();
+                throw new Error("Not auth");
+            }
+            throw new Error(response.error);
+        }
+
         const postFeed = document.getElementById("postFeed");
 
-        const posts = await fetchProtectedResource("/posts")
+        if (Array.isArray(posts)) {
+            if (posts.length < 10) {
+                hasMore = false;
+            }
 
-        if (!posts) {
-            throw new Error("Failed to load posts");
-        }
-      
-        postFeed.innerHTML = ""; 
-
-        if (Array.isArray(posts) && posts.length > 0) {
             posts.forEach(post => {
                 const postElement = document.createElement("div");
                 postElement.classList.add("post");
@@ -74,100 +87,120 @@ export async function LoadPosts() {
                     <h3>${post.title}</h3>
                     <p>${post.content}</p>
                     <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
-                    <div>
-                        <button class="like-btn" data-post-id="${post.id}">Like (${post.likes || 0})</button>
-                        <button class="dislike-btn" data-post-id="${post.id}">Dislike (${post.dislikes || 0})</button>
-                    </div>
+
                     <button class="show-comments-btn" data-post-id="${post.id}">View Comments</button>
                 `;
 
                 postFeed.appendChild(postElement);
             });
             setupPostEventListeners();
-
-        } else {
-            postFeed.innerHTML = "<p>No posts found.</p>";
+            offset += posts.length;
         }
     } catch (error) {
         const messageElement = document.getElementById("message");
         if (messageElement) {
             messageElement.textContent = error.message;
         }
+    } finally {
+        isLoading = false;
     }
 }
 
 export function setupPostEventListeners() {
-    document.querySelectorAll(".like-btn").forEach(button => {
-        button.addEventListener("click", async () => {
-            await LikePost(button.dataset.postId);
-        });
-    });
+    // document.querySelectorAll(".like-btn").forEach(button => {
+    //     button.addEventListener("click", async () => {
+    //         await LikePost(button.dataset.postId);
+    //     });
+    // });
 
-    document.querySelectorAll(".dislike-btn").forEach(button => {
-        button.addEventListener("click", async () => {
-            await DislikePost(button.dataset.postId);
-        });
-    });
+    // document.querySelectorAll(".dislike-btn").forEach(button => {
+    //     button.addEventListener("click", async () => {
+    //         await DislikePost(button.dataset.postId);
+    //     });
+    // });
 
     document.querySelectorAll(".show-comments-btn").forEach(button => {
         button.addEventListener("click", () => ShowComments(button.dataset.postId));
     });
 }
 
-export async function LikePost(postId) {
-    try {
-        const response = await fetchProtectedResource(`/posts/like?post_id=${postId}`, {
-            method: "POST",
-        });
+// export async function LikePost(postId) {
+//     try {
+//         const response = await fetchProtectedResource(`/posts/like?post_id=${postId}`, {
+//             method: "POST",
+//         });
 
-        if (!response) {
-            throw new Error("Failed to like post");
-        }
+//         if (!response) {
+//             throw new Error("Failed to like post");
+//         }
 
-        const likeButton = document.querySelector(`button.like-btn[data-post-id="${postId}"]`);
-        const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);
+//         const likeButton = document.querySelector(`button.like-btn[data-post-id="${postId}"]`);
+//         const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);
 
-        let likeCount = parseInt(likeButton.textContent.match(/\d+/)[0]);
+//         let likeCount = parseInt(likeButton.textContent.match(/\d+/)[0]);
 
-        if (response.message.includes("removed")) {
-            likeCount--;
-        } else {
-            likeCount++;
-        }
+//         if (response.message.includes("removed")) {
+//             likeCount--;
+//         } else {
+//             likeCount++;
+//         }
 
-        likeButton.textContent = `Like (${likeCount})`;
+//         likeButton.textContent = `Like (${likeCount})`;
     
-    } catch (error) {
-        document.getElementById("message").textContent = error.message;
+//     } catch (error) {
+//         document.getElementById("message").textContent = error.message;
+//     }
+// }
+
+// export async function DislikePost(postId) {
+//     try {
+//         const response = await fetchProtectedResource(`/posts/dislike?post_id=${postId}`, {
+//             method: "POST",
+//         });
+
+//         if (!response) {
+//             throw new Error("Failed to dislike post");
+//         }
+
+//         const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);
+
+//         let dislikeCount = parseInt(dislikeButton.textContent.match(/\d+/)[0]);
+
+//         if (response.message.includes("removed")) {
+//             dislikeCount--;
+//         } else {
+//             dislikeCount++;
+//         }
+
+//         dislikeButton.textContent = `Dislike (${dislikeCount})`;
+
+//     } catch (error) {
+//         document.getElementById("message").textContent = error.message;
+//     }
+// }
+
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
     }
 }
 
-export async function DislikePost(postId) {
-    try {
-        const response = await fetchProtectedResource(`/posts/dislike?post_id=${postId}`, {
-            method: "POST",
-        });
-
-        if (!response) {
-            throw new Error("Failed to dislike post");
-        }
-
-        const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);
-
-        let dislikeCount = parseInt(dislikeButton.textContent.match(/\d+/)[0]);
-
-        if (response.message.includes("removed")) {
-            dislikeCount--;
-        } else {
-            dislikeCount++;
-        }
-
-        dislikeButton.textContent = `Dislike (${dislikeCount})`;
-
-    } catch (error) {
-        document.getElementById("message").textContent = error.message;
+const handleScroll = throttle(() => {
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const bodyHeight = document.body.offsetHeight;
+    
+    if (scrollPosition >= bodyHeight - 1000) {
+        LoadPosts(false);
     }
-}
+}, 500);
+document.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('scroll', handleScroll);
+});
 
 
 

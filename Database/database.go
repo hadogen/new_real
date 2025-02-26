@@ -54,25 +54,25 @@ func createTables(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to create comments table: %v", err)
 	}
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comment_likes (
-		id TEXT PRIMARY KEY,
-		comment_id TEXT,
-		username TEXT
+	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS comment_likes (
+	// 	id TEXT PRIMARY KEY,
+	// 	comment_id TEXT,
+	// 	username TEXT
 	
-	);`)
-	if err != nil {
-		return fmt.Errorf("failed to create comment_likes table: %v", err)
-	}
+	// );`)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to create comment_likes table: %v", err)
+	// }
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comment_dislikes (
-		id TEXT PRIMARY KEY NOT NULL,
-		comment_id TEXT NOT NULL,
-		username TEXT NOT NULL,
-		FOREIGN KEY (comment_id) REFERENCES comments(id)
-	);`)
-	if err != nil {
-		return fmt.Errorf("failed to create comment_dislikes table: %v", err)
-	}
+	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS comment_dislikes (
+	// 	id TEXT PRIMARY KEY NOT NULL,
+	// 	comment_id TEXT NOT NULL,
+	// 	username TEXT NOT NULL,
+	// 	FOREIGN KEY (comment_id) REFERENCES comments(id)
+	// );`)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to create comment_dislikes table: %v", err)
+	// }
 
 	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS private_messages (
@@ -102,24 +102,24 @@ func createTables(db *sql.DB) error {
 
 	}
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_likes (
-		id TEXT PRIMARY KEY,
-		post_id TEXT,
-		username TEXT
-	);`)
-	if err != nil {
-		return fmt.Errorf("failed to create post_likes table: %v", err)
-	}
+	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_likes (
+	// 	id TEXT PRIMARY KEY,
+	// 	post_id TEXT,
+	// 	username TEXT
+	// );`)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to create post_likes table: %v", err)
+	// }
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_dislikes (
-		id TEXT PRIMARY KEY,
-		post_id TEXT,
-		username TEXT
+	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_dislikes (
+	// 	id TEXT PRIMARY KEY,
+	// 	post_id TEXT,
+	// 	username TEXT
 
-	);`)
-	if err != nil {
-		return fmt.Errorf("failed to create post_dislikes table: %v", err)
-	}
+	// );`)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to create post_dislikes table: %v", err)
+	// }
 	_,err = db.Exec(`CREATE TABLE IF NOT EXISTS sessions (
 		id integer PRIMARY KEY autoincrement,
 		nickname TEXT,

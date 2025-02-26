@@ -1,5 +1,4 @@
 import { getCurrentUsername } from "./utils.js";
-import { fetchProtectedResource } from "./posts.js";
 
 
 let activeUsers = [];
@@ -150,8 +149,15 @@ function appendMessageToChat(data, isSent) {
 export async function fetchAllUsers() {
   try {
     const currentUsername = await getCurrentUsername();
-    const users = await fetchProtectedResource("/all-users");
-
+    const response = await fetch("/all-users");
+    const users = await response.json();
+    if (!response.ok) {
+      if (response.status===401){
+        logout();
+        throw new Error("Not auth");
+    }
+      throw new Error(users.error);
+    }
     const otherUsers = users.filter((user) => user !== currentUsername);
     allUsers = otherUsers;
     updateUserList();
@@ -163,6 +169,7 @@ let oldestMessageDate = null;
 let isLoadingMessages = false;
 
 export async function loadChatWithUser(user) {
+  console.log("Loading chat with user:", user);
   const currentUsername = await getCurrentUsername();
   if (!currentUsername) return;
 
@@ -177,11 +184,18 @@ export async function loadChatWithUser(user) {
   }
 
   messageList.innerHTML = "";
-
-  const messages = await fetchProtectedResource(
+try{
+  const response = await fetch(
     `/private-messages?sender=${currentUsername}&receiver=${user}`
   );
-
+  const messages = await response.json();
+  if (!response.ok) {
+    if (response.status===401){
+      logout();
+      throw new Error("Not auth");
+  }
+    throw new Error(messages.error);
+  }
   if (Array.isArray(messages)) {
     messages.reverse().forEach((msg) => {
       const messageItem = createMessageElement(
@@ -220,6 +234,10 @@ export async function loadChatWithUser(user) {
   if (messageInput) {
     messageInput.focus();
   }
+} catch (error) {
+  console.error("Error loading chat with user:", error);
+  document.getElementById("messageList").textContent = error.message; 
+}
 }
 async function handleScroll() {
   const messageBoxContent = document.getElementById("messageBoxContent");
@@ -237,6 +255,7 @@ async function handleScroll() {
 }
 
 async function loadOlderMessages() {
+  console.log("Loading older messages...");
   if (isEndOfMessages) return;
   
   isLoadingMessages = true;
@@ -246,10 +265,17 @@ async function loadOlderMessages() {
 
   try {
     const currentUsername = await getCurrentUsername();
-    const messages = await fetchProtectedResource(
+    const response = await fetch(
       `/private-messages?sender=${currentUsername}&receiver=${selectedUser}&before=${oldestMessageDate}`
     );
-
+    const messages = await response.json();
+    if (!response.ok) {
+      if (response.status===401){
+        logout();
+        throw new Error("Not auth");
+    }
+      throw new Error(messages.error);
+    }
     if (!Array.isArray(messages) || messages.length === 0) {
       isEndOfMessages = true;
       const endMessage = document.createElement('div');
@@ -266,6 +292,7 @@ async function loadOlderMessages() {
     oldestMessageDate = messages[0].created_at;
 
     messages.reverse().forEach((msg) => {
+      console.log(msg);
       const messageItem = createMessageElement(
         msg.sender,
         msg.message,
@@ -279,6 +306,7 @@ async function loadOlderMessages() {
 
   } catch (error) {
     console.error("Error loading older messages:", error);
+    document.getElementById("messageList").textContent = error.message;
   } finally {
     isLoadingMessages = false;
   }
@@ -403,8 +431,7 @@ function showNotification(sender) {
         selectedUser = user;
         console.log(`Selected user: ${user}`);
         unreadCounts[user] = 0;
-        updateUserList(activeUsers);
-        loadChatWithUser(user);
+
   
         const messageBox = document.getElementById("messageBox");
         if (messageBox.classList.contains("collapsed")) {
@@ -423,13 +450,15 @@ function showNotification(sender) {
         const messageList = document.getElementById("messageList");
         if (messageList) {
           messageList.innerHTML = ""; 
-          await loadChatWithUser(user);
         }
   
         const messageInput = document.getElementById("messageInput");
         if (messageInput) {
           messageInput.focus();
         }
+
+        updateUserList(activeUsers);
+        await loadChatWithUser(user);
       });
   
       userList.appendChild(li);

@@ -1,27 +1,28 @@
 import { ShowSection, createChatUI } from './ui.js';
-import { LoadPosts, fetchProtectedResource } from './posts.js';
+import { LoadPosts} from './posts.js';
 import { logout } from './auth.js';
 import { ConnectWebSocket, fetchAllUsers } from './websocket.js';
 import { ws } from './websocket.js';
 
 async function checkSession() {
     try {
-        const response = await fetch('/auto-login', { credentials: 'include' });
+        const response = await fetch('/auto-login');
         if (response.ok) {
             const user = await response.json();
             console.log("Auto-login with valid session for:", user.username);
             ShowSection("posts");
             await LoadPosts();
-            createChatUI(); 
+            createChatUI();
             await ConnectWebSocket();
             await fetchAllUsers();
 
             document.getElementById("navLogout").style.display = "block";
             document.getElementById("navLogin").style.display = "none";
             document.getElementById("navRegister").style.display = "none";
+            document.getElementById("message").innerHTML = response.message
             return;
         }
-        throw new Error("Please log in");
+        throw new Error(response.error);
 
     } catch (error) {
         console.error('Error checking session:', error);

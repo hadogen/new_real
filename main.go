@@ -19,21 +19,18 @@ func main() {
 	http.HandleFunc("/register", handlers.RegisterHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)
 	http.HandleFunc("/auto-login", auth.AutoLoginHandler)
-
 	http.HandleFunc("/logout", handlers.LogoutHandler)
 
 	http.HandleFunc("/posts", auth.Middleware(handlers.GetPostsHandler))
 	http.HandleFunc("/posts/create", auth.Middleware(handlers.CreatePostHandler))
-	http.HandleFunc("/posts/like", auth.Middleware(handlers.LikePostHandler))
-	http.HandleFunc("/posts/dislike", auth.Middleware(handlers.DislikePostHandler))
+
 
 	http.HandleFunc("/posts/category", auth.Middleware(handlers.GetPostsByCategoryHandler))
 	http.HandleFunc("/posts/created", auth.Middleware(handlers.GetPostsByUserHandler))
 	http.HandleFunc("/posts/liked", auth.Middleware(handlers.GetLikedPostsHandler))
 	http.HandleFunc("/comments/create", auth.Middleware(handlers.CreateCommentHandler))
 	http.HandleFunc("/comments", auth.Middleware(handlers.GetCommentsHandler))
-	http.HandleFunc("/comments/like", auth.Middleware(handlers.LikeCommentHandler))
-	http.HandleFunc("/comments/dislike", auth.Middleware(handlers.DislikeCommentHandler))
+
 
 	http.HandleFunc("/private-messages", auth.Middleware(handlers.GetPrivateMessagesHandler))
 	http.HandleFunc("/all-users", auth.Middleware(handlers.GetAllUsers))

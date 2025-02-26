@@ -1,7 +1,7 @@
 import { handleCreateComment} from './comments.js'
 import { handleCreatePost} from './posts.js'
 import {handleLogin, handleRegister} from './auth.js'
-import {FilterByCategory, FilterByCreatedPosts, FilterByLikedPosts} from './filters.js'
+import {FilterByCategory, FilterByCreatedPosts} from './filters.js'
 import { sendPrivateMessage} from './websocket.js'
 import { getCurrentUsername } from './utils.js'
 const activeListeners = new Map();
@@ -63,7 +63,6 @@ const sectionTemplates = {
                     </select>
                     <button id="btn-filter">Apply</button>
                     <button id="btn-filter-created">My Posts</button>
-                    <button id="btn-filter-liked">Liked Posts</button>
                 </div>
             </div>
             <div id="postFeed"></div>
@@ -157,7 +156,6 @@ export async function ShowSection(sectionId) {
         posts: () => {
             const createPostForm = document.getElementById("createPostForm");
             const filterBtn = document.getElementById("btn-filter");
-            const filterLikedBtn = document.getElementById("btn-filter-liked");
             const filterCreatedBtn = document.getElementById("btn-filter-created");
             const sendMessageBtn = document.getElementById("sendMessageButton");
 
@@ -166,7 +164,6 @@ export async function ShowSection(sectionId) {
                 await handleCreatePost(e);
             });
             addTrackedEventListener(filterBtn, "click", FilterByCategory);
-            addTrackedEventListener(filterLikedBtn, "click", FilterByLikedPosts);
             addTrackedEventListener(filterCreatedBtn, "click", FilterByCreatedPosts);
             addTrackedEventListener(sendMessageBtn, "click", sendPrivateMessage);
         },
@@ -189,11 +186,10 @@ export function createChatUI() {
     const userListContainer = document.createElement('div');
     userListContainer.id = 'userListContainer';
     userListContainer.innerHTML = `
-        <h2>Active Users</h2>
+        <h2>Users</h2>
         <ul id="userList"></ul>
     `;
 
-    // Create message box
     const messageBox = document.createElement('div');
     messageBox.id = 'messageBox';
     messageBox.className = 'collapsed';
@@ -212,11 +208,9 @@ export function createChatUI() {
         <button id="sendMessageButton">Send</button>
     `;
 
-    // Append elements to body
     document.body.appendChild(userListContainer);
     document.body.appendChild(messageBox);
 
-    // Setup toggle button listener
     document.getElementById("toggleMessageBox").addEventListener("click", () => {
         const messageBox = document.getElementById("messageBox");
         const toggleButton = document.getElementById("toggleMessageBox");
@@ -231,7 +225,6 @@ export function createChatUI() {
         }
     });
 
-    // Setup message input listener
     const messageInput = document.getElementById("messageInput");
     const sendMessageButton = document.getElementById("sendMessageButton");
     sendMessageButton.addEventListener("click", sendPrivateMessage);

@@ -4,7 +4,6 @@ import { LoadPosts } from './posts.js';
 import { ws } from './websocket.js';
 
 export async function handleLogin() {
-    console.log("handleLogin");
     const loginButton = document.querySelector("#loginForm button[type='submit']");
     if (loginButton.disabled) return; 
     
@@ -17,21 +16,19 @@ export async function handleLogin() {
     try {
         const response = await fetch("/login", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(credentials),
-            credentials: 'include'
+            body: JSON.stringify(credentials)
         });
 
         const result = await response.json();
+
         if (!response.ok) {
-            document.getElementById("message").textContent = result.error || "Failed to login";
-            throw new Error(result.error || "Failed to login");
+            throw new Error(result.error);
 
         }
         document.getElementById("navLogout").style.display = "block";
         document.getElementById("navLogin").style.display = "none";
         document.getElementById("navRegister").style.display = "none";
-        document.getElementById("message").textContent = result.message || "Login successful!";
+        document.getElementById("message").textContent = "Login successful!";
         ShowSection("posts");
 
         await LoadPosts();
@@ -42,6 +39,7 @@ export async function handleLogin() {
 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
+        console.log(error, "error message" ,error.message)
     } finally {
         loginButton.disabled = false;
     }
@@ -63,18 +61,14 @@ export async function  handleRegister(){
     try {
         const response = await fetch("/register", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(user),
         });
-        console.log("resp test")
         const result = await response.json();
-        console.log("result", result)
-        if (!response.ok) {
-            document.getElementById("message").textContent = result.error;
-            throw new Error(result.error || "Failed to register");
-        }
 
-        document.getElementById("message").textContent = result.message || "Registration successful!";
+        if (!response.ok) {
+            throw new Error(result.error);
+        }
+        document.getElementById("message").textContent =  result.message;
         ShowSection("login"); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
@@ -85,12 +79,11 @@ export async function logout() {
     try {
         const response = await fetch("/logout", {
             method: "POST",
-            credentials: "include",
         });
+        const result = await response.json();
 
         if (!response.ok) {
-            const result = await response.json();
-            throw new Error(result.error || "Failed to logout");
+            throw new Error(result.error);
         }
 
         if (ws) {
@@ -103,10 +96,9 @@ export async function logout() {
         
         removeChatUI();
         ShowSection("login");
-        document.getElementById("message").textContent = "Logged out successfully";
+        document.getElementById("message").textContent = result.message;
             
     } catch (error) {
-        console.log("Logout error:", error);
         document.getElementById("message").textContent = error.message;
     }
 }

@@ -31,7 +31,7 @@ type Post struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func ParseInput(nickname, email,firstname, lastname, password, gender string , age int) (string , bool){
+func ParseInput(nickname, email, firstname, lastname, password, gender string, age int) (string, bool) {
 	if nickname == "" || email == "" || firstname == "" || lastname == "" || password == "" {
 		return "missing input", false
 	}
@@ -45,7 +45,7 @@ func ParseInput(nickname, email,firstname, lastname, password, gender string , a
 	}
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	if !emailRegex.MatchString(email) {
-		return "Invalid email format" , false
+		return "Invalid email format", false
 	}
 
 	nicknameRegex := regexp.MustCompile(`^[a-zA-Z0-9_-]{3,30}$`)
@@ -55,31 +55,34 @@ func ParseInput(nickname, email,firstname, lastname, password, gender string , a
 
 	nameRegex := regexp.MustCompile(`^[a-zA-Z\s-]{2,50}$`)
 	if !nameRegex.MatchString(firstname) || !nameRegex.MatchString(lastname) {
-		return "Invalid name format" , false
+		return "Invalid name format", false
 	}
 
 	if len(password) < 8 {
 		return "The password should at least have 8 characters", false
 	}
 
-	return "" , true
+	return "", true
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error" : "Method not allowed"})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Bad request"})
 		return
 	}
-	errmsg , resp := ParseInput(user.Nickname, user.Email ,user.FirstName, user.LastName, user.Password,user.Gender, user.Age)
+	errmsg, resp := ParseInput(user.Nickname, user.Email, user.FirstName, user.LastName, user.Password, user.Gender, user.Age)
 	fmt.Println(errmsg)
-	if !resp{
+	if !resp {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": errmsg})
 		return
@@ -98,6 +101,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     `, user.Nickname, user.Email, user.Password, user.Age, user.Gender, user.FirstName, user.LastName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Internall server error"})
 		return
 	}
 
@@ -107,6 +111,15 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 // Login an existing user
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != "POST"{
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+	return
+
+
+	}
 	var credentials struct {
 		Login    string `json:"login"`
 		Password string `json:"password"`
@@ -114,11 +127,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+	json.NewEncoder(w).Encode(map[string]string{"error": "Bad Request"})
+
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 
-	// Validate credentials
 	if credentials.Login == "" || credentials.Password == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Missing login or password"})
@@ -147,7 +160,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(credentials.Password))
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid password"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Username/email incorrect , try again"})
 		return
 	}
 
@@ -192,15 +205,16 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
-		fmt.Println("No session cookie found")
-		http.Error(w, "Session not found", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "not auth"})
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
-		fmt.Println("Invalid session")
-		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		fmt.Println("failed to create session")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Not auth"})
 		return
 	}
 
@@ -231,7 +245,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	websocket.OnlineConnections.Mutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Logged out successfully"))
+	json.NewEncoder(w).Encode(map[string]string{"message": "logged out succesfully"})
 }
 
 // Create a new post
@@ -245,12 +259,16 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Not auth"})
+
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Not auth"})
+
 		return
 	}
 
@@ -283,6 +301,18 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 // Fetch all posts
 func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method !="GET"{
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+	offset := r.URL.Query().Get("offset")
+	if offset == "" {
+		offset = "0"
+	}
+
+	limit := 10 // Fixed limit of 10 posts per request
+
 	rows, err := database.Db.Query(`
         SELECT 
             p.id, 
@@ -294,10 +324,11 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
             (SELECT COUNT(*) FROM post_dislikes WHERE post_id = p.id) AS dislikes
         FROM posts p
         ORDER BY p.created_at DESC
-    `)
+        LIMIT ? OFFSET ?
+    `, limit, offset)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch posts: " + err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": "internal server error "})
 		return
 	}
 	defer rows.Close()
@@ -324,7 +355,7 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Content, &post.CreatedAt, &post.Likes, &post.Dislikes)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan post: " + err.Error()})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 			return
 		}
 		posts = append(posts, post)
@@ -374,19 +405,21 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Not auth"})
 		return
 	}
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "ise"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"username": username})
 }

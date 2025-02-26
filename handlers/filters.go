@@ -8,6 +8,11 @@ import (
 )
 
 func GetPostsByCategoryHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET"{
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed"})
+		return
+	}
 	category := r.URL.Query().Get("category")
 	fmt.Println(category)
 	if category == "" {
@@ -77,20 +82,24 @@ func GetPostsByCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		}{}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(posts)
 }
 
 // Get posts created by the logged-in user
 func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET"{
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method Not allowed"})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	username := r.URL.Query().Get("username")
 	if username == "" {
 		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Bad request"})
+
 		return
 	}
 
@@ -110,6 +119,8 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
     `, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+
 		return
 	}
 	defer rows.Close()
@@ -139,6 +150,7 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("posts filterd", post.ID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 			return
 		}
 		posts = append(posts, post)
@@ -163,13 +175,18 @@ func GetPostsByUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	if r.Method != "GET"{
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
+		
 		return
 	}
 	username := r.URL.Query().Get("username")
 	if username == "" {
 		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Bad request"})
 		return
 	}
 
@@ -190,6 +207,7 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
     `, username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 		return
 	}
 	defer rows.Close()
@@ -217,8 +235,9 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Content, &post.Category, &post.CreatedAt, &post.Likes, &post.Dislikes)
 		if err != nil {
+			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to scan post: " + err.Error()})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 			return
 		}
 		posts = append(posts, post)
@@ -237,7 +256,6 @@ func GetLikedPostsHandler(w http.ResponseWriter, r *http.Request) {
 		}{}
 	}
 	
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(posts)
 }
