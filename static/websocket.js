@@ -1,5 +1,5 @@
-import { getCurrentUsername } from "./utils.js";
-
+import { logout} from "./auth.js";
+import { username } from "./app.js";
 
 let activeUsers = [];
 let allUsers = [];
@@ -9,8 +9,9 @@ let loadingDebounceTimer = null;
 export let selectedUser = null;
 export let ws = null;
 
-
-
+export function setSelectedUser(user) {
+    selectedUser = user;
+}
 
 export async function ConnectWebSocket() {
   try {
@@ -35,15 +36,14 @@ export async function ConnectWebSocket() {
 
       switch (data.type) {
         case "userList":
-          const currentUsername = await getCurrentUsername();
-          activeUsers = data.users.filter(
-            (user) => user !== currentUsername
-          );
+          const currentUsername = username;
+          activeUsers = data.users.filter(user => user !== currentUsername);
           updateUserList(activeUsers);
           break;
 
         case "userStatus":
-          const currentUser = await getCurrentUsername();
+          const currentUser = username
+          console.log("current username", currentUser)
           if (data.username !== currentUser) {
             if (data.online) {
               if (!activeUsers.includes(data.username)) {
@@ -75,9 +75,9 @@ export async function ConnectWebSocket() {
 
 function updateChatUI(isActive) {
   const messageInput = document.getElementById("messageInput");
-  const sendButton = document.getElementById("sendMessageButton"); // Changed from "sendButton"
+  const sendButton = document.getElementById("sendMessageButton"); 
 
-  if (messageInput && sendButton) { // Add null check
+  if (messageInput && sendButton) { 
     messageInput.disabled = !isActive;
     sendButton.disabled = !isActive;
   }
@@ -148,7 +148,7 @@ function appendMessageToChat(data, isSent) {
 
 export async function fetchAllUsers() {
   try {
-    const currentUsername = await getCurrentUsername();
+    const currentUsername = username
     const response = await fetch("/all-users");
     const users = await response.json();
     if (!response.ok) {
@@ -170,7 +170,7 @@ let isLoadingMessages = false;
 
 export async function loadChatWithUser(user) {
   console.log("Loading chat with user:", user);
-  const currentUsername = await getCurrentUsername();
+  const currentUsername = username
   if (!currentUsername) return;
 
   const messageList = document.getElementById("messageList");
@@ -264,7 +264,7 @@ async function loadOlderMessages() {
   const prevHeight = messageBoxContent.scrollHeight;
 
   try {
-    const currentUsername = await getCurrentUsername();
+    const currentUsername = username
     const response = await fetch(
       `/private-messages?sender=${currentUsername}&receiver=${selectedUser}&before=${oldestMessageDate}`
     );
@@ -328,7 +328,7 @@ export async function sendPrivateMessage() {
   }
 
   if (message && selectedUser && ws) {
-    const currentUsername = await getCurrentUsername();
+    const currentUsername = username
     if (!currentUsername) return;
     
     const timestamp = new Date().toISOString();
@@ -398,69 +398,93 @@ function showNotification(sender) {
     }, 5000);
   }
   
-  function updateUserList(activeUsers = []) {
+  async function updateUserList(activeUsers = []) {
     const userList = document.getElementById("userList");
     if (!userList) return;
-  
-    userList.innerHTML = "";
-  
-    allUsers.forEach(user => {
-      const li = document.createElement('li');
-      li.textContent = user;
-  
-      if (unreadCounts[user] > 0) {
-        const badge = document.createElement('span');
-        badge.textContent = ` (${unreadCounts[user]})`;
-        badge.style.color = 'red';
-        li.appendChild(badge);
-      }
-      if (!activeUsers.includes(user)) {
-        const offlineStatus = document.createElement('span');
-        offlineStatus.textContent = " (offline)";
-        offlineStatus.style.color = "#ff4444";
-        li.appendChild(offlineStatus);
-      }
-      if (activeUsers.includes(user)) {
-        const status = document.createElement('span');
-        status.textContent = " (active)";
-        status.style.color = "#4CAF50";
-        li.appendChild(status);
-      }
-  
-      li.addEventListener('click', async () => {
-        selectedUser = user;
-        console.log(`Selected user: ${user}`);
-        unreadCounts[user] = 0;
 
-  
-        const messageBox = document.getElementById("messageBox");
-        if (messageBox.classList.contains("collapsed")) {
-          messageBox.classList.remove("collapsed");
-          const toggleButton = document.getElementById("toggleMessageBox");
-          if (toggleButton) {
-            toggleButton.textContent = "▼";
-          }
-        }
-  
-        const chatHeader = document.getElementById("chatHeader");
-        if (chatHeader) {
-          chatHeader.textContent = `Chat with ${user}`;
-        }
-  
-        const messageList = document.getElementById("messageList");
-        if (messageList) {
-          messageList.innerHTML = ""; 
-        }
-  
-        const messageInput = document.getElementById("messageInput");
-        if (messageInput) {
-          messageInput.focus();
-        }
+    const latestMessages = await fetch(`/latest-messages?username=${username}`)
+        .then(res => res.json())
+        .catch(() => ({}));
 
-        updateUserList(activeUsers);
-        await loadChatWithUser(user);
-      });
-  
-      userList.appendChild(li);
+    // Sort users based on latest message time and alphabetically
+    const sortedUsers = allUsers.sort((a, b) => {
+        const timeA = latestMessages[a];
+        const timeB = latestMessages[b];
+        
+        // If both users have messages, sort by latest message
+        if (timeA && timeB) {
+            return new Date(timeB) - new Date(timeA);
+        }
+        
+        // If only one user has messages, put them first
+        if (timeA) return -1;
+        if (timeB) return 1;
+        
+        // If neither has messages, sort alphabetically
+        return a.localeCompare(b);
     });
-  }
+
+    userList.innerHTML = "";
+
+    sortedUsers.forEach(user => {
+        const li = document.createElement('li');
+        li.textContent = user;
+
+        if (unreadCounts[user] > 0) {
+            const badge = document.createElement('span');
+            badge.textContent = ` (${unreadCounts[user]})`;
+            badge.style.color = 'red';
+            li.appendChild(badge);
+        }
+        
+        if (!activeUsers.includes(user)) {
+            const offlineStatus = document.createElement('span');
+            offlineStatus.textContent = " (offline)";
+            offlineStatus.style.color = "#ff4444";
+            li.appendChild(offlineStatus);
+        }
+        
+        if (activeUsers.includes(user)) {
+            const status = document.createElement('span');
+            status.textContent = " (active)";
+            status.style.color = "#4CAF50";
+            li.appendChild(status);
+        }
+
+        li.addEventListener('click', async () => {
+            selectedUser = user;
+            console.log(`Selected user: ${user}`);
+            unreadCounts[user] = 0;
+
+  
+            const messageBox = document.getElementById("messageBox");
+            if (messageBox.classList.contains("collapsed")) {
+              messageBox.classList.remove("collapsed");
+              const toggleButton = document.getElementById("toggleMessageBox");
+              if (toggleButton) {
+                toggleButton.textContent = "▼";
+              }
+            }
+      
+            const chatHeader = document.getElementById("chatHeader");
+            if (chatHeader) {
+              chatHeader.textContent = `Chat with ${user}`;
+            }
+      
+            const messageList = document.getElementById("messageList");
+            if (messageList) {
+              messageList.innerHTML = ""; 
+            }
+      
+            const messageInput = document.getElementById("messageInput");
+            if (messageInput) {
+              messageInput.focus();
+            }
+    
+            updateUserList(activeUsers);
+            await loadChatWithUser(user);
+          });
+
+        userList.appendChild(li);
+    });
+}

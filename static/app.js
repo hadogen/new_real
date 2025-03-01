@@ -3,51 +3,57 @@ import { LoadPosts} from './posts.js';
 import { logout } from './auth.js';
 import { ConnectWebSocket, fetchAllUsers } from './websocket.js';
 import { ws } from './websocket.js';
+export let username = null;
 
-async function checkSession() {
+export function setUsername(newUsername) {
+    username = newUsername;
+}
+
+async function initializeSession() {
     try {
-        const response = await fetch('/auto-login');
-        if (response.ok) {
-            const user = await response.json();
-            console.log("Auto-login with valid session for:", user.username);
-            ShowSection("posts");
-            await LoadPosts();
-            createChatUI();
-            await ConnectWebSocket();
-            await fetchAllUsers();
-
-            document.getElementById("navLogout").style.display = "block";
-            document.getElementById("navLogin").style.display = "none";
-            document.getElementById("navRegister").style.display = "none";
-            document.getElementById("message").innerHTML = response.message
-            return;
+        // Try auto-login first
+        const autoLoginResponse = await fetch('/auto-login');
+        if (autoLoginResponse.ok) {
+            const userData = await autoLoginResponse.json();
+            username = userData.username;
+            console.log("Auto-login successful for:", username);
+            
+            // Setup authenticated state
+            await setupAuthenticatedState();
+            return true;
         }
-        throw new Error(response.error);
-
+        return false;
     } catch (error) {
-        console.error('Error checking session:', error);
-        document.getElementById("message").textContent = error.message;
-        ShowSection("login");
-        document.getElementById("navLogout").style.display = "none";
-        document.getElementById("navLogin").style.display = "block";
-        document.getElementById("navRegister").style.display = "block";
+        console.error('Error during auto-login:', error);
+        return false;
     }
+}
+
+export async function setupAuthenticatedState() {
+    ShowSection("posts");
+    await LoadPosts();
+    createChatUI();
+    await ConnectWebSocket();
+    await fetchAllUsers();
+
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("App initialized");
-
-    await checkSession();
-
     
+    const isAuthenticated = await initializeSession();
+    if (!isAuthenticated) {
+        ShowSection("login");
+    }
+
     document.getElementById("navRegister").addEventListener("click", () => ShowSection("register"));
     document.getElementById("navLogin").addEventListener("click", () => ShowSection("login"));
     document.getElementById("navBack").addEventListener("click", () => LoadPosts());
     document.getElementById("navLogout").addEventListener("click", () => logout());
-
-    setInterval(async () => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "requestUsers" }));
-        }
-    }, 3000);
+       
+    // setInterval(async () => {
+    //     if (ws && ws.readyState === WebSocket.OPEN) {
+    //         ws.send(JSON.stringify({ type: "requestUsers" }));
+    //     }
+    // }, 3000);
 });

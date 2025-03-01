@@ -71,7 +71,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error" : "Method not allowed"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
 		return
 	}
 	var user User
@@ -114,11 +114,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if r.Method != "POST"{
+	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-	json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
-	return
-
+		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
 
 	}
 	var credentials struct {
@@ -128,7 +127,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(map[string]string{"error": "Bad Request"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Bad Request"})
 
 		return
 	}
@@ -213,7 +212,6 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
-		fmt.Println("failed to create session")
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Not auth"})
 		return
@@ -303,7 +301,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 // Fetch all posts
 func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method !="GET"{
+	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
 		return
@@ -321,14 +319,15 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
             p.username, 
             p.title, 
             p.content, 
-            p.created_at,
-            (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) AS likes,
-            (SELECT COUNT(*) FROM post_dislikes WHERE post_id = p.id) AS dislikes
+			p.category,
+			p.created_at
         FROM posts p
         ORDER BY p.created_at DESC
         LIMIT ? OFFSET ?
     `, limit, offset)
 	if err != nil {
+		fmt.Println(err)
+
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "internal server error "})
 		return
@@ -340,26 +339,27 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 		Username  string `json:"username"`
 		Title     string `json:"title"`
 		Content   string `json:"content"`
+		Category  string `json:"category"`
 		CreatedAt string `json:"created_at"`
-		Likes     int    `json:"likes"`
-		Dislikes  int    `json:"dislikes"`
 	}
+
 	for rows.Next() {
 		var post struct {
 			ID        string `json:"id"`
 			Username  string `json:"username"`
 			Title     string `json:"title"`
 			Content   string `json:"content"`
+			Category  string `json:"category"`
 			CreatedAt string `json:"created_at"`
-			Likes     int    `json:"likes"`
-			Dislikes  int    `json:"dislikes"`
 		}
-		err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Content, &post.CreatedAt, &post.Likes, &post.Dislikes)
+		err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Content,&post.Category ,&post.CreatedAt)
 		if err != nil {
+			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 			return
 		}
+		fmt.Println(post.Category)
 		posts = append(posts, post)
 	}
 
@@ -370,9 +370,8 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 			Username  string `json:"username"`
 			Title     string `json:"title"`
 			Content   string `json:"content"`
+			Category  string `json:"category"`
 			CreatedAt string `json:"created_at"`
-			Likes     int    `json:"likes"`
-			Dislikes  int    `json:"dislikes"`
 		}{}
 	}
 
@@ -389,6 +388,7 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := database.Db.Query("SELECT nickname FROM users")
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Error Selecting users from database"})
 	}

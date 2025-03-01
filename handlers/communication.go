@@ -22,7 +22,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	if sender == "" || receiver == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error" : "Bad request"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Bad request"})
 		return
 	}
 
@@ -50,7 +50,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error" : "Interal server error"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Interal server error"})
 		return
 	}
 	defer rows.Close()
@@ -78,4 +78,49 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(messages)
+}
+
+func GetLatestMessageTimesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Username required"})
+		return
+	}
+
+	rows, err := database.Db.Query(`
+        SELECT 
+            CASE 
+                WHEN sender = ? THEN receiver
+                ELSE sender
+            END as other_user,
+            MAX(created_at) as latest_message
+        FROM private_messages
+        WHERE sender = ? OR receiver = ?
+        GROUP BY other_user
+    `, username, username, username)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	latestMessages := make(map[string]string)
+	for rows.Next() {
+		var otherUser, latestMessage string
+		if err := rows.Scan(&otherUser, &latestMessage); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		latestMessages[otherUser] = latestMessage
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(latestMessages)
 }

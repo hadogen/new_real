@@ -14,7 +14,7 @@ import (
 
 // Create a comment
 func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "post" {
+	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		json.NewEncoder(w).Encode(map[string]string{"error": "bad request"})
 		return

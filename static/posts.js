@@ -1,7 +1,6 @@
 import {fetchAllUsers} from './websocket.js'
 import  {ShowComments} from  './comments.js';
 import {ShowSection} from './ui.js'
-import { getCurrentUsername } from './utils.js';
 import {logout} from './auth.js'
 
 let isLoading = false;
@@ -85,15 +84,18 @@ export async function LoadPosts(isInitial = true) {
                 postElement.classList.add("post");
                 postElement.innerHTML = `
                     <h3>${post.title}</h3>
+                    <h4>${post.category}</h4>
+
                     <p>${post.content}</p>
                     <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
-
                     <button class="show-comments-btn" data-post-id="${post.id}">View Comments</button>
                 `;
 
                 postFeed.appendChild(postElement);
             });
-            setupPostEventListeners();
+            document.querySelectorAll(".show-comments-btn").forEach(button => {
+                button.addEventListener("click", () => ShowComments(button.dataset.postId));
+            });
             offset += posts.length;
         }
     } catch (error) {
@@ -106,78 +108,7 @@ export async function LoadPosts(isInitial = true) {
     }
 }
 
-export function setupPostEventListeners() {
-    // document.querySelectorAll(".like-btn").forEach(button => {
-    //     button.addEventListener("click", async () => {
-    //         await LikePost(button.dataset.postId);
-    //     });
-    // });
 
-    // document.querySelectorAll(".dislike-btn").forEach(button => {
-    //     button.addEventListener("click", async () => {
-    //         await DislikePost(button.dataset.postId);
-    //     });
-    // });
-
-    document.querySelectorAll(".show-comments-btn").forEach(button => {
-        button.addEventListener("click", () => ShowComments(button.dataset.postId));
-    });
-}
-
-// export async function LikePost(postId) {
-//     try {
-//         const response = await fetchProtectedResource(`/posts/like?post_id=${postId}`, {
-//             method: "POST",
-//         });
-
-//         if (!response) {
-//             throw new Error("Failed to like post");
-//         }
-
-//         const likeButton = document.querySelector(`button.like-btn[data-post-id="${postId}"]`);
-//         const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);
-
-//         let likeCount = parseInt(likeButton.textContent.match(/\d+/)[0]);
-
-//         if (response.message.includes("removed")) {
-//             likeCount--;
-//         } else {
-//             likeCount++;
-//         }
-
-//         likeButton.textContent = `Like (${likeCount})`;
-    
-//     } catch (error) {
-//         document.getElementById("message").textContent = error.message;
-//     }
-// }
-
-// export async function DislikePost(postId) {
-//     try {
-//         const response = await fetchProtectedResource(`/posts/dislike?post_id=${postId}`, {
-//             method: "POST",
-//         });
-
-//         if (!response) {
-//             throw new Error("Failed to dislike post");
-//         }
-
-//         const dislikeButton = document.querySelector(`button.dislike-btn[data-post-id="${postId}"]`);
-
-//         let dislikeCount = parseInt(dislikeButton.textContent.match(/\d+/)[0]);
-
-//         if (response.message.includes("removed")) {
-//             dislikeCount--;
-//         } else {
-//             dislikeCount++;
-//         }
-
-//         dislikeButton.textContent = `Dislike (${dislikeCount})`;
-
-//     } catch (error) {
-//         document.getElementById("message").textContent = error.message;
-//     }
-// }
 
 function throttle(func, limit) {
     let inThrottle;

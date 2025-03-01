@@ -2,12 +2,9 @@ import { ShowSection, createChatUI, removeChatUI } from "./ui.js";
 import { ConnectWebSocket, fetchAllUsers } from "./websocket.js";
 import { LoadPosts } from './posts.js';
 import { ws } from './websocket.js';
+import { setUsername, setupAuthenticatedState } from './app.js';
 
 export async function handleLogin() {
-    const loginButton = document.querySelector("#loginForm button[type='submit']");
-    if (loginButton.disabled) return; 
-    
-    loginButton.disabled = true; 
     const credentials = {
         login: document.getElementById("loginId").value,
         password: document.getElementById("loginPassword").value,
@@ -23,25 +20,23 @@ export async function handleLogin() {
 
         if (!response.ok) {
             throw new Error(result.error);
-
         }
-        document.getElementById("navLogout").style.display = "block";
-        document.getElementById("navLogin").style.display = "none";
-        document.getElementById("navRegister").style.display = "none";
-        document.getElementById("message").textContent = "Login successful!";
-        ShowSection("posts");
 
-        await LoadPosts();
-        createChatUI(); 
-        await ConnectWebSocket();
-        await fetchAllUsers();
+        // After successful login, get username
+        const userResponse = await fetch('/current-user');
+        if (!userResponse.ok) {
+            throw new Error('Failed to get user information');
+        }
+        const userData = await userResponse.json();
+        setUsername(userData.username); // Use the setter function instead
 
+        // Setup authenticated state
+        await setupAuthenticatedState();
+        document.getElementById("message").textContent = "Login successful";
 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
-        console.log(error, "error message" ,error.message)
-    } finally {
-        loginButton.disabled = false;
+        console.error('Login error:', error);
     }
 }
 
@@ -77,28 +72,30 @@ export async function  handleRegister(){
 
 export async function logout() {
     try {
+        // Attempt to logout on server
         const response = await fetch("/logout", {
             method: "POST",
+            credentials: "include"
         });
-        const result = await response.json();
 
-        if (!response.ok) {
-            throw new Error(result.error);
-        }
-
+        // Close WebSocket connection if it exists
         if (ws) {
             ws.close(1000, "Logged out successfully");
         }
         
-        document.getElementById("navLogout").style.display = "none";
-        document.getElementById("navLogin").style.display = "block";
-        document.getElementById("navRegister").style.display = "block";
-        
+        // Clean up UI and show login section
         removeChatUI();
         ShowSection("login");
-        document.getElementById("message").textContent = result.message;
-            
+        
+        // Clear login form
+        document.getElementById("loginId").value = "";
+        document.getElementById("loginPassword").value = "";
+        
+        // Show success message
+        document.getElementById("message").textContent = "Logged out successfully";
+
     } catch (error) {
-        document.getElementById("message").textContent = error.message;
+        console.error("Logout error:", error.message);
+        document.getElementById("message").textContent = "Error during logout";
     }
 }

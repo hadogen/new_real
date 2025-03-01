@@ -1,6 +1,6 @@
 import { ShowComments } from './comments.js';
 import { setupPostEventListeners } from './posts.js';
-import { getCurrentUsername } from './utils.js';
+import {username} from './app.js';
 
 
 export async function FilterByCategory() {
@@ -19,6 +19,7 @@ export async function FilterByCategory() {
         }
 
         const postFeed = document.getElementById("postFeed");
+        postFeed.innerHTML = ""
         if (Array.isArray(posts) && posts.length > 0) {
             postFeed.innerHTML = posts.map(post => `
                 <div class="post">
@@ -40,7 +41,6 @@ export async function FilterByCategory() {
 
 export async function FilterByCreatedPosts() {
     // need to logout here
-    const username = await getCurrentUsername();
     if (!username) {
         document.getElementById("message").textContent = "You must be logged in to view your posts.";
         return;

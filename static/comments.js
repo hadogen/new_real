@@ -1,4 +1,3 @@
-import { getCurrentUsername } from './utils.js';
 import { ShowSection } from './ui.js';
 import { logout } from './auth.js';
 
@@ -22,24 +21,17 @@ export async function handleCreateComment() {
         const result = await response.json()
         if (!response.ok){
             if (result.status === 401) {
-                ShowSection("login");
                 logout();
                 return;
             }
             throw new Error("Failed to create comment");
-            return;
         }
-
-
-        // if (!result) {
-        //     throw new Error("Failed to create comment");
-        // }
 
         document.getElementById("message").textContent = "Comment created successfully!";
         document.getElementById("createCommentForm").reset();
         LoadComments(comment.post_id); 
     } catch (error) {
-        document.getElementById("message").textContent = error.message + "in handler"
+        document.getElementById("message").textContent = error.message 
     }
 }
 
@@ -49,12 +41,10 @@ export async function LoadComments(postId) {
 
         if (!response.ok){
             if (response.status === 401) {
-                ShowSection("login");
                 logout();
-                return null;
+                return;
             }
             throw new Error("Failed to load comments");
-            return null;
         }
         const comments = await response.json();
 
@@ -80,37 +70,3 @@ export async function LoadComments(postId) {
         document.getElementById("message").textContent = error.message+ "in load comments";
     }
 }
-
-// export async function LikeComment(commentId) {
-//     try {
-//         const result = await fetchProtectedResource(`/comments/like?comment_id=${commentId}`, {
-//             method: "POST",
-//         });
-
-//         if (!result) {
-//             throw new Error("Failed to like comment");
-//         }
-
-//         document.getElementById("message").textContent = "Comment liked successfully!";
-//         LoadComments(document.getElementById("commentPostId").value); 
-//     } catch (error) {
-//         document.getElementById("message").textContent = error.message;
-//     }
-// }
-
-// export async function DislikeComment(commentId) {
-//     try {
-//         const result = await fetchProtectedResource(`/comments/dislike?comment_id=${commentId}`, {
-//             method: "POST",
-//         });
-
-//         if (!result) {
-//             throw new Error("Failed to dislike comment");
-//         }
-
-//         document.getElementById("message").textContent = "Comment disliked successfully!";
-//         LoadComments(document.getElementById("commentPostId").value); 
-//     } catch (error) {
-//         document.getElementById("message").textContent = error.message;
-//     }
-// }
