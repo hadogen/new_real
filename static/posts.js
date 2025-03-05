@@ -25,6 +25,7 @@ export async function handleCreatePost() {
         if (!response.ok) {
             if(response.status===401){
                 logout();
+                console.log("logged out handleCreatePost");
                 throw new Error("not auth")
             }
             throw new Error("Failed to create post");
@@ -35,6 +36,7 @@ export async function handleCreatePost() {
         await LoadPosts(); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
+        console.log("logged out handleCreatePost");
     }
 }
 
@@ -67,6 +69,7 @@ export async function LoadPosts(isInitial = true) {
         if (!response.ok) {
             if (response.status===401){
                 logout();
+                console.log("logged out LoadPosts");
                 throw new Error("Not auth");
             }
             throw new Error(response.error);
@@ -103,6 +106,7 @@ export async function LoadPosts(isInitial = true) {
         if (messageElement) {
             messageElement.textContent = error.message;
         }
+        console.log("logged out LoadPosts");
     } finally {
         isLoading = false;
     }

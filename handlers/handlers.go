@@ -82,7 +82,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	errmsg, resp := ParseInput(user.Nickname, user.Email, user.FirstName, user.LastName, user.Password, user.Gender, user.Age)
-	fmt.Println(errmsg)
 	if !resp {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": errmsg})
@@ -183,7 +182,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Expires: expiration,
 		Path:    "/",
 	})
-	fmt.Println("session created", session)
+	fmt.Println("session created for : ",user.Nickname , session)
 
 	_, err = database.Db.Exec(`
         INSERT INTO sessions (session, nickname, expiration)
@@ -239,7 +238,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		delete(websocket.OnlineConnections.Clients, username)
-		fmt.Println("User logged out and connection deleted:", username)
+		fmt.Println("User logged out and connection deleted :", username)
 	}
 	websocket.OnlineConnections.Mutex.Unlock()
 
@@ -359,7 +358,6 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 			return
 		}
-		fmt.Println(post.Category)
 		posts = append(posts, post)
 	}
 

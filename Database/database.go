@@ -107,3 +107,22 @@ func GetUsernameFromSession(session string) (string, error) {
 	}
 	return username, nil
 }
+
+func GetAllUsers() ([]string, error) {
+    rows, err := Db.Query("SELECT nickname FROM users")
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var users []string
+    for rows.Next() {
+        var username string
+        if err := rows.Scan(&username); err != nil {
+            return nil, err
+        }
+        users = append(users, username)
+    }
+
+    return users, nil
+}

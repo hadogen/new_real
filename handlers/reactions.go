@@ -88,7 +88,6 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
         ORDER BY c.created_at DESC
     `, postID)
 	if err != nil {
-		fmt.Println("here")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "ise"})
 

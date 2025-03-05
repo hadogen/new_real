@@ -17,10 +17,11 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	sender := r.URL.Query().Get("sender")
 	receiver := r.URL.Query().Get("receiver")
 	before := r.URL.Query().Get("before")
-	// limit := r.URL.Query().Get("limit")
+
 	w.Header().Set("Content-Type", "application/json")
 
 	if sender == "" || receiver == "" {
+		fmt.Println("Sender or receiver is empty")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Bad request"})
 		return
@@ -49,6 +50,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Interal server error"})
 		return
@@ -74,8 +76,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			"created_at": createdAt,
 		})
 	}
-	fmt.Printf("length of messages : %d\n", len(messages))
-
+	fmt.Println("messages loaded")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(messages)
 }

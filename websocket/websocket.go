@@ -53,7 +53,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	broadcastUserStatus(username, true)
 
-	sendOnlineUsers(conn)
+	sendFullUserStatus(conn)
 
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -80,7 +80,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("handling pm", messageData.Message)
 			handlePrivateMessage(messageData)
 		case "requestUsers":
-			sendOnlineUsers(conn)
+			sendFullUserStatus(conn)
 		}
 	}
 	fmt.Println("closing connection ", username)
@@ -128,33 +128,20 @@ func handlePrivateMessage(messageData struct {
 	}
 }
 
-func sendOnlineUsers(conn *websocket.Conn) {
-	OnlineConnections.Mutex.Lock()
-	defer OnlineConnections.Mutex.Unlock()
-
-	activeUsers := make([]string, 0, len(OnlineConnections.Clients))
-	for user := range OnlineConnections.Clients {
-		activeUsers = append(activeUsers, user)
-	}
-	fmt.Println("active users: ", len(activeUsers), activeUsers)
-
-	conn.WriteJSON(map[string]interface{}{
-		"type":  "userList",
-		"users": activeUsers,
-	})
-}
 
 func broadcastUserStatus(username string, online bool) {
 	OnlineConnections.Mutex.Lock()
 	defer OnlineConnections.Mutex.Unlock()
 
+	msg := map[string]interface{}{
+		"type":     "userUpdate",
+		"username": username,
+		"online":   online,
+	}
+
 	for _, conns := range OnlineConnections.Clients {
 		for _, conn := range conns {
-			conn.WriteJSON(map[string]interface{}{
-				"type":     "userStatus",
-				"username": username,
-				"online":   online,
-			})
+			conn.WriteJSON(msg)
 		}
 	}
 }
@@ -178,4 +165,28 @@ func handleDisconnection(username string, conn *websocket.Conn) {
 			go broadcastUserStatus(username, false)
 		}
 	}
+}
+
+func sendFullUserStatus(conn *websocket.Conn) {
+	OnlineConnections.Mutex.Lock()
+	defer OnlineConnections.Mutex.Unlock()
+
+	allUsers, err := database.GetAllUsers()
+	if err != nil {
+		log.Println("Error fetching all users:", err)
+		return
+	}
+
+	response := make([]map[string]interface{}, len(allUsers))
+	for i, user := range allUsers {
+		response[i] = map[string]interface{}{
+			"username": user,
+			"online":   len(OnlineConnections.Clients[user]) > 0,
+		}
+	}
+
+	conn.WriteJSON(map[string]interface{}{
+		"type":  "fullUserStatus",
+		"users": response,
+	})
 }

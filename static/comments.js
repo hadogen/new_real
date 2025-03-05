@@ -22,6 +22,7 @@ export async function handleCreateComment() {
         if (!response.ok){
             if (result.status === 401) {
                 logout();
+                console.log("logged out handleCreateComment");
                 return;
             }
             throw new Error("Failed to create comment");
@@ -31,7 +32,8 @@ export async function handleCreateComment() {
         document.getElementById("createCommentForm").reset();
         LoadComments(comment.post_id); 
     } catch (error) {
-        document.getElementById("message").textContent = error.message 
+        document.getElementById("message").textContent = error.message;
+        console.log("logged out handleCreateComment");
     }
 }
 
@@ -42,6 +44,7 @@ export async function LoadComments(postId) {
         if (!response.ok){
             if (response.status === 401) {
                 logout();
+                console.log("logged out LoadComments");
                 return;
             }
             throw new Error("Failed to load comments");
@@ -67,6 +70,7 @@ export async function LoadComments(postId) {
             commentFeed.innerHTML = "<p>No comments found.</p>";
         }
     } catch (error) {
-        document.getElementById("message").textContent = error.message+ "in load comments";
+        document.getElementById("message").textContent = error.message + "in load comments";
+        console.log("logged out LoadComments");
     }
 }

@@ -37,12 +37,11 @@ export async function handleLogin() {
     } catch (error) {
         document.getElementById("message").textContent = error.message;
         console.error('Login error:', error);
+        console.log("logged out handleLogin");
     }
 }
 
-export async function  handleRegister(){
-
-    
+export async function handleRegister() {
     const user = {
         nickname: document.getElementById("nickname").value,
         email: document.getElementById("email").value,
@@ -67,6 +66,7 @@ export async function  handleRegister(){
         ShowSection("login"); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
+        console.log("logged out handleRegister");
     }
 }
 

@@ -13,6 +13,7 @@ export async function FilterByCategory() {
         if (!response.ok) {
             if (response.status===401){
                 logout();
+                console.log("logged out FilterByCategory");
                 throw new Error("Not auth");
             }
             throw new Error(posts.error);
@@ -36,6 +37,7 @@ export async function FilterByCategory() {
         }
     } catch (error) {
         document.getElementById("message").textContent = error.message;
+        console.log("logged out FilterByCategory");
     }
 }
 
@@ -54,6 +56,7 @@ export async function FilterByCreatedPosts() {
         if (!response.ok){
             if (response.status===401){
                 logout();
+                console.log("logged out FilterByCreatedPosts");
                 throw new Error("Not auth");
             }
         }
@@ -75,6 +78,7 @@ export async function FilterByCreatedPosts() {
         }
     } catch (error) {
         document.getElementById("message").textContent = error.message;
+        console.log("logged out FilterByCreatedPosts");
     }
 }
 
