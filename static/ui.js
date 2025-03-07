@@ -1,8 +1,8 @@
 import { handleCreateComment} from './comments.js'
-import { handleCreatePost} from './posts.js'
-import {handleLogin, handleRegister} from './auth.js'
+import { handleCreatePost, LoadPosts} from './posts.js'
+import {handleLogin, handleRegister, logout} from './auth.js'
 import { sendPrivateMessage,  selectedUser, setSelectedUser } from './websocket.js'
-import {username} from './app.js'
+import {username} from './auth.js'
 
 const sectionTemplates = {
     login: `
@@ -86,6 +86,8 @@ export async function ShowSection(sectionId) {
         navElements.navLogin.style.display = "block";
         navElements.navRegister.style.display = "block";
     } else if (sectionId === "posts" || sectionId === "comments") {
+        document.getElementById("navBack").addEventListener("click", () => LoadPosts());
+        document.getElementById("navLogout").addEventListener("click", () => logout());
         navElements.navBack.style.display = "block";
         navElements.navLogout.style.display = "block";
         navElements.navLogin.style.display = "none";
@@ -147,7 +149,7 @@ export function createChatUI() {
         <div id="messageBoxHeader">
             <div>
                 <h3>Send a Private Message</h3>
-                <h4 id="selectedUserName">${selectedUser}</h4>
+                <h4 id="selectedUserName"></h4>
             </div>
             <button id="toggleMessageBox">▼</button>
         </div>
@@ -168,32 +170,43 @@ export function createChatUI() {
         
         if (messageBox.classList.contains("collapsed")) {
             messageBox.classList.remove("collapsed");
+            selectedUserName.textContent = selectedUser;
             toggleButton.textContent = "▼";
             console.log("not collapsed" );
         } else {
             messageBox.classList.add("collapsed");
             toggleButton.textContent = "▲";
             toggleButton.style.marginTop = "0";
-            setSelectedUser(null); // Use the new function instead of direct assignment
-            selectedUserName.textContent = ""; // Clear the displayed username
+            setSelectedUser(null); 
+            selectedUserName.textContent = "";
             console.log("collapesed");
-            document.getElementById("messageList").innerHTML = ""; // Clear message history
+            document.getElementById("messageList").innerHTML = "";
         }
     });
-
-    const messageInput = document.getElementById("messageInput");
     const sendMessageButton = document.getElementById("sendMessageButton");
     sendMessageButton.addEventListener("click", sendPrivateMessage);
 }
 
-export function removeChatUI() {
-    const userListContainer = document.getElementById('userListContainer');
-    const messageBox = document.getElementById('messageBox');
-    
-    if (userListContainer) {
-        userListContainer.remove();
-    }
-    if (messageBox) {
-        messageBox.remove();
+
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
     }
 }
+
+const handleScroll = throttle(() => {
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const bodyHeight = document.body.offsetHeight;
+    
+    if (scrollPosition >= bodyHeight - 1000) {
+        LoadPosts(false);
+    }
+}, 500);
+
+
+

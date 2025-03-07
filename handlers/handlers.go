@@ -202,19 +202,20 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "not auth"})
 		return
 	}
-
 	username, err := database.GetUsernameFromSession(sessionCookie.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Not auth"})
 		return
 	}
+	
 
 	_, err = database.Db.Exec(`DELETE FROM sessions WHERE session = ?`, sessionCookie.Value)
 	if err != nil {
@@ -227,7 +228,6 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: "session", Value: "", MaxAge: -1})
 
 	websocket.OnlineConnections.Mutex.Lock()
-
 	if conns, ok := websocket.OnlineConnections.Clients[username]; ok {
 		for _, conn := range conns {
 			err := conn.Close()
@@ -238,10 +238,12 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		delete(websocket.OnlineConnections.Clients, username)
+	fmt.Println("loged out user broadcast", username)
+
 		fmt.Println("User logged out and connection deleted :", username)
 	}
 	websocket.OnlineConnections.Mutex.Unlock()
-
+	websocket.BroadcastUserStatus(username, false)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "logged out succesfully"})
 }

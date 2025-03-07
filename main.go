@@ -24,7 +24,6 @@ func main() {
 	http.HandleFunc("/posts", auth.Middleware(handlers.GetPostsHandler))
 	http.HandleFunc("/posts/create", auth.Middleware(handlers.CreatePostHandler))
 
-
 	http.HandleFunc("/comments/create", auth.Middleware(handlers.CreateCommentHandler))
 	http.HandleFunc("/comments", auth.Middleware(handlers.GetCommentsHandler))
 

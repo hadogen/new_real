@@ -1,9 +1,17 @@
-import { ShowSection, createChatUI, removeChatUI } from "./ui.js";
-import { ConnectWebSocket, fetchAllUsers } from "./websocket.js";
+import { ShowSection, createChatUI } from "./ui.js";
+import { ConnectWebSocket } from "./websocket.js";
 import { LoadPosts } from './posts.js';
 import { ws } from './websocket.js';
-import { setUsername, setupAuthenticatedState } from './app.js';
+import {setupAuthenticatedState } from './app.js';
 
+import {removeChatUI} from './chatUi.js'
+
+
+        export let username = null;
+
+export function setUsername(newUsername) {
+            username = newUsername;
+        }
 export async function handleLogin() {
     const credentials = {
         login: document.getElementById("loginId").value,
@@ -28,7 +36,7 @@ export async function handleLogin() {
             throw new Error('Failed to get user information');
         }
         const userData = await userResponse.json();
-        setUsername(userData.username); // Use the setter function instead
+        setUsername(userData.username); 
 
         // Setup authenticated state
         await setupAuthenticatedState();
@@ -75,23 +83,17 @@ export async function logout() {
         // Attempt to logout on server
         const response = await fetch("/logout", {
             method: "POST",
-            credentials: "include"
         });
 
-        // Close WebSocket connection if it exists
         if (ws) {
             ws.close(1000, "Logged out successfully");
         }
         
-        // Clean up UI and show login section
         removeChatUI();
         ShowSection("login");
         
-        // Clear login form
-        document.getElementById("loginId").value = "";
-        document.getElementById("loginPassword").value = "";
-        
-        // Show success message
+        document.getElementById("loginId").innerHTML = ""
+        document.getElementById("loginPassword").innerHTML ="";
         document.getElementById("message").textContent = "Logged out successfully";
 
     } catch (error) {

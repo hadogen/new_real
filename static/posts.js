@@ -1,4 +1,3 @@
-import {fetchAllUsers} from './websocket.js'
 import  {ShowComments} from  './comments.js';
 import {ShowSection} from './ui.js'
 import {logout} from './auth.js'
@@ -86,8 +85,9 @@ export async function LoadPosts(isInitial = true) {
                 const postElement = document.createElement("div");
                 postElement.classList.add("post");
                 postElement.innerHTML = `
-                    <h3>${post.title}</h3>
-                    <h4>${post.category}</h4>
+                   <h1 id="post-cat">${post.category}</h1>
+                    <h2>${post.title}</h2>
+                 
 
                     <p>${post.content}</p>
                     <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
@@ -114,28 +114,8 @@ export async function LoadPosts(isInitial = true) {
 
 
 
-function throttle(func, limit) {
-    let inThrottle;
-    return function(...args) {
-        if (!inThrottle) {
-            func.apply(this, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
-    }
-}
 
-const handleScroll = throttle(() => {
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const bodyHeight = document.body.offsetHeight;
-    
-    if (scrollPosition >= bodyHeight - 1000) {
-        LoadPosts(false);
-    }
-}, 500);
-document.addEventListener('DOMContentLoaded', () => {
-    window.addEventListener('scroll', handleScroll);
-});
+
 
 
 

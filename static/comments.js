@@ -44,7 +44,6 @@ export async function LoadComments(postId) {
         if (!response.ok){
             if (response.status === 401) {
                 logout();
-                console.log("logged out LoadComments");
                 return;
             }
             throw new Error("Failed to load comments");
@@ -65,10 +64,12 @@ export async function LoadComments(postId) {
                 `;
 
                 commentFeed.appendChild(commentElement);
+
             });
         } else {
             commentFeed.innerHTML = "<p>No comments found.</p>";
         }
+        document.getElementById("message").textContent = "comments loaded"
     } catch (error) {
         document.getElementById("message").textContent = error.message + "in load comments";
         console.log("logged out LoadComments");

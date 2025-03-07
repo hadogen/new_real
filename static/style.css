@@ -340,22 +340,7 @@ button:hover {
   background: #03f091;
 }
 
-.like-btn {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  cursor: pointer;
-  margin-right: 5px;
-}
 
-.dislike-btn {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  cursor: pointer;
-}
 
 /* Posts and Comments */
 .post,
@@ -414,11 +399,7 @@ button:hover {
   background: #555;
 }
 
-/* Responsive images */
-img {
-  max-width: 100%;
-  height: auto;
-}
+
 
 /* Mobile-first message box */
 .message-box-controls {
@@ -499,9 +480,10 @@ img {
   margin-top: 20px;
 }
 
-/* Add or update these responsive styles */
-
-/* Base responsive styles */
 * {
   box-sizing: border-box;
+}
+
+h1#post-cat {
+color:   rgb(52 152 219);
 }

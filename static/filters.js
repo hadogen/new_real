@@ -1,6 +1,6 @@
 import { ShowComments } from './comments.js';
 import { setupPostEventListeners } from './posts.js';
-import {username} from './app.js';
+import {username} from './auth.js';
 
 
 export async function FilterByCategory() {

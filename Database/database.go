@@ -118,7 +118,7 @@ func GetAllUsers() ([]string, error) {
     var users []string
     for rows.Next() {
         var username string
-        if err := rows.Scan(&username); err != nil {
+        if err = rows.Scan(&username); err != nil {
             return nil, err
         }
         users = append(users, username)

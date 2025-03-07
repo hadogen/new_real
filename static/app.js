@@ -1,24 +1,27 @@
 import { ShowSection, createChatUI } from './ui.js';
 import { LoadPosts} from './posts.js';
-import { logout } from './auth.js';
-import { ConnectWebSocket, fetchAllUsers } from './websocket.js';
+import { logout, username, setUsername } from './auth.js';
+import { ConnectWebSocket } from './websocket.js';
 import { ws } from './websocket.js';
-export let username = null;
 
-export function setUsername(newUsername) {
-    username = newUsername;
+
+export async function setupAuthenticatedState() {
+    ShowSection("posts");
+    await LoadPosts();
+    createChatUI();
+    await ConnectWebSocket();
+
 }
+
 
 async function initializeSession() {
     try {
-        // Try auto-login first
         const autoLoginResponse = await fetch('/auto-login');
         if (autoLoginResponse.ok) {
             const userData = await autoLoginResponse.json();
-            username = userData.username;
+            setUsername(userData.username);
             console.log("Auto-login successful for:", username);
             
-            // Setup authenticated state
             await setupAuthenticatedState();
             return true;
         }
@@ -29,31 +32,18 @@ async function initializeSession() {
     }
 }
 
-export async function setupAuthenticatedState() {
-    ShowSection("posts");
-    await LoadPosts();
-    createChatUI();
-    await ConnectWebSocket();
-    await fetchAllUsers();
-
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("App initialized");
     
     const isAuthenticated = await initializeSession();
     if (!isAuthenticated) {
         ShowSection("login");
+        return
     }
 
     document.getElementById("navRegister").addEventListener("click", () => ShowSection("register"));
     document.getElementById("navLogin").addEventListener("click", () => ShowSection("login"));
-    document.getElementById("navBack").addEventListener("click", () => LoadPosts());
-    document.getElementById("navLogout").addEventListener("click", () => logout());
+
        
-    // setInterval(async () => {
-    //     if (ws && ws.readyState === WebSocket.OPEN) {
-    //         ws.send(JSON.stringify({ type: "requestUsers" }));
-    //     }
-    // }, 3000);
+
 });

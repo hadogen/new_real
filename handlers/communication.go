@@ -112,7 +112,7 @@ func GetLatestMessageTimesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	latestMessages := make(map[string]string)
+	latestMessages := map[string]string{}
 	for rows.Next() {
 		var otherUser, latestMessage string
 		if err := rows.Scan(&otherUser, &latestMessage); err != nil {

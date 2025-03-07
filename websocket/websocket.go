@@ -17,7 +17,7 @@ type Online struct {
 }
 
 var OnlineConnections = Online{
-	Clients: make(map[string][]*websocket.Conn),
+	Clients: map[string][]*websocket.Conn{},
 }
 
 var upgrader = websocket.Upgrader{
@@ -51,7 +51,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("this user ", username, "has these connections: ", len(OnlineConnections.Clients[username]))
 	OnlineConnections.Mutex.Unlock()
 
-	broadcastUserStatus(username, true)
+	BroadcastUserStatus(username, true)
 
 	sendFullUserStatus(conn)
 
@@ -128,17 +128,15 @@ func handlePrivateMessage(messageData struct {
 	}
 }
 
-
-func broadcastUserStatus(username string, online bool) {
+func BroadcastUserStatus(username string, online bool) {
 	OnlineConnections.Mutex.Lock()
 	defer OnlineConnections.Mutex.Unlock()
 
-	msg := map[string]interface{}{
+	msg := map[string]any{
 		"type":     "userUpdate",
 		"username": username,
 		"online":   online,
 	}
-
 	for _, conns := range OnlineConnections.Clients {
 		for _, conn := range conns {
 			conn.WriteJSON(msg)
@@ -151,7 +149,7 @@ func handleDisconnection(username string, conn *websocket.Conn) {
 	defer OnlineConnections.Mutex.Unlock()
 
 	if connections, ok := OnlineConnections.Clients[username]; ok {
-		newConns := make([]*websocket.Conn, 0)
+		newConns := []*websocket.Conn{}
 		for _, c := range connections {
 			if c != conn {
 				newConns = append(newConns, c)
@@ -162,7 +160,7 @@ func handleDisconnection(username string, conn *websocket.Conn) {
 		if len(newConns) == 0 {
 			fmt.Println("loging out bcz no connections left for ", username)
 			delete(OnlineConnections.Clients, username)
-			go broadcastUserStatus(username, false)
+			go BroadcastUserStatus(username, false)
 		}
 	}
 }
@@ -171,21 +169,21 @@ func sendFullUserStatus(conn *websocket.Conn) {
 	OnlineConnections.Mutex.Lock()
 	defer OnlineConnections.Mutex.Unlock()
 
-	allUsers, err := database.GetAllUsers()
+	use, err := database.GetAllUsers()
 	if err != nil {
 		log.Println("Error fetching all users:", err)
 		return
 	}
 
-	response := make([]map[string]interface{}, len(allUsers))
-	for i, user := range allUsers {
-		response[i] = map[string]interface{}{
+	response := []map[string]any{}
+	for _, user := range use {
+		response = append(response, map[string]any{
 			"username": user,
 			"online":   len(OnlineConnections.Clients[user]) > 0,
-		}
+		})
 	}
 
-	conn.WriteJSON(map[string]interface{}{
+	conn.WriteJSON(map[string]any{
 		"type":  "fullUserStatus",
 		"users": response,
 	})
