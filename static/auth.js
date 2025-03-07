@@ -7,11 +7,13 @@ import {setupAuthenticatedState } from './app.js';
 import {removeChatUI} from './chatUi.js'
 
 
-        export let username = null;
-
+export let username = null;
 export function setUsername(newUsername) {
-            username = newUsername;
-        }
+
+    username = newUsername;
+}
+
+
 export async function handleLogin() {
     const credentials = {
         login: document.getElementById("loginId").value,
@@ -80,7 +82,6 @@ export async function handleRegister() {
 
 export async function logout() {
     try {
-        // Attempt to logout on server
         const response = await fetch("/logout", {
             method: "POST",
         });
@@ -90,6 +91,7 @@ export async function logout() {
         }
         
         removeChatUI();
+        setUsername(null);
         ShowSection("login");
         
         document.getElementById("loginId").innerHTML = ""

@@ -17,7 +17,7 @@ type Online struct {
 }
 
 var OnlineConnections = Online{
-	Clients: map[string][]*websocket.Conn{},
+	Clients: make(map[string][]*websocket.Conn),
 }
 
 var upgrader = websocket.Upgrader{
@@ -132,11 +132,12 @@ func BroadcastUserStatus(username string, online bool) {
 	OnlineConnections.Mutex.Lock()
 	defer OnlineConnections.Mutex.Unlock()
 
-	msg := map[string]any{
+	msg := map[string]interface{}{
 		"type":     "userUpdate",
 		"username": username,
 		"online":   online,
 	}
+
 	for _, conns := range OnlineConnections.Clients {
 		for _, conn := range conns {
 			conn.WriteJSON(msg)
@@ -149,7 +150,7 @@ func handleDisconnection(username string, conn *websocket.Conn) {
 	defer OnlineConnections.Mutex.Unlock()
 
 	if connections, ok := OnlineConnections.Clients[username]; ok {
-		newConns := []*websocket.Conn{}
+		newConns := make([]*websocket.Conn, 0)
 		for _, c := range connections {
 			if c != conn {
 				newConns = append(newConns, c)
@@ -169,21 +170,21 @@ func sendFullUserStatus(conn *websocket.Conn) {
 	OnlineConnections.Mutex.Lock()
 	defer OnlineConnections.Mutex.Unlock()
 
-	use, err := database.GetAllUsers()
+	allUsers, err := database.GetAllUsers()
 	if err != nil {
 		log.Println("Error fetching all users:", err)
 		return
 	}
 
-	response := []map[string]any{}
-	for _, user := range use {
-		response = append(response, map[string]any{
+	response := make([]map[string]interface{}, len(allUsers))
+	for i, user := range allUsers {
+		response[i] = map[string]interface{}{
 			"username": user,
 			"online":   len(OnlineConnections.Clients[user]) > 0,
-		})
+		}
 	}
 
-	conn.WriteJSON(map[string]any{
+	conn.WriteJSON(map[string]interface{}{
 		"type":  "fullUserStatus",
 		"users": response,
 	})

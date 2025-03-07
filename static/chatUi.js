@@ -3,8 +3,6 @@ import { selectedUser, setSelectedUser, sendPrivateMessage, ws } from './websock
 import { logout } from './auth.js';
 import {fetchLatestMessageTimes, users, unreadCounts} from './websocket.js'
 
-
-
 export function scrollToBottom() {
     const messageBoxContent = document.getElementById("messageBoxContent");
     if (messageBoxContent) {
@@ -82,8 +80,6 @@ export async function updateUserList() {
     }
 }
 
-
-
 document.getElementById("sendMessageButton")?.addEventListener("click", sendPrivateMessage);
 
 export function showNotification(sender) {
@@ -107,23 +103,6 @@ function openChatBox() {
         if (messageInput) messageInput.focus();
     }
   }
-
-//   export async function fetchAllUsers() {
-//     try {
-//         const response = await fetch("/all-users");
-//         const users = await response.json();
-//         if (!response.ok) {
-//             if (response.status === 401) {
-//                 logout();
-//                 throw new Error("Not authorized");
-//             }
-//             throw new Error(users.error);
-//         }
-//         updateUserList();
-//     } catch (error) {
-//         console.error("Error fetching users:", error);
-//     }
-// }
 
 export function removeChatUI() {
     const userListContainer = document.getElementById('userListContainer');
@@ -152,6 +131,7 @@ async function handleScroll() {
         }, 500);
     }
 }
+
 document.getElementById("toggleMessageBox")?.addEventListener("click", () => {
     const messageBox = document.getElementById("messageBox");
     const toggleButton = document.getElementById("toggleMessageBox");
@@ -312,9 +292,7 @@ export async function loadOlderMessages() {
     }
 }
 
-
-
-  export function appendMessageToChat(data, isSent) {
+export function appendMessageToChat(data, isSent) {
     const messageList = document.getElementById("messageList");
     if (!messageList) return;
 

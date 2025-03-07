@@ -27,10 +27,10 @@ func main() {
 	http.HandleFunc("/comments/create", auth.Middleware(handlers.CreateCommentHandler))
 	http.HandleFunc("/comments", auth.Middleware(handlers.GetCommentsHandler))
 
-	http.HandleFunc("/private-messages", auth.Middleware(handlers.GetPrivateMessagesHandler))
-	http.HandleFunc("/all-users", auth.Middleware(handlers.GetAllUsers))
 	http.HandleFunc("/ws", auth.Middleware(websocket.HandleWebSocket))
 	http.HandleFunc("/current-user", auth.Middleware(handlers.GetCurrentUserHandler))
+	
+	http.HandleFunc("/private-messages", auth.Middleware(handlers.GetPrivateMessagesHandler))
 	http.HandleFunc("/latest-messages", auth.Middleware(handlers.GetLatestMessageTimesHandler))
 
 	fs := http.FileServer(http.Dir("./static"))
