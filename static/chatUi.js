@@ -69,6 +69,7 @@ export async function updateUserList() {
             loadChatWithUser(user.username);
             openChatBox();
             updateChatUI(user.online);
+            updateUserList();
         });
 
         userList.appendChild(li);

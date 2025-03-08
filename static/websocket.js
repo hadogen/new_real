@@ -99,11 +99,14 @@ function handlePrivateMessage(data) {
     if (selectedUser !== data.sender) {
         showNotification(data.sender);
         unreadCounts[data.sender] = (unreadCounts[data.sender] || 0) + 1;
+        updateUserList()
     }
+    console.log("this is the unread count for :", data.sender ,unreadCounts[data.sender])
 
     if (selectedUser === data.sender) {
         appendMessageToChat(data, false);
         unreadCounts[data.sender] = 0;
+        updateUserList()
     }
 }
 
