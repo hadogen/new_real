@@ -1,16 +1,11 @@
-import { logout } from "./auth.js";
 import { username } from "./auth.js";
-import { 
-    scrollToBottom, 
+import {  
     updateChatUI, 
     showNotification, 
     appendMessageToChat,
     updateUserList,
-    createMessageElement 
 } from "./chatUi.js";
 
-let allUsers = [];
-let activeUsers = []
 export let selectedUser = null;
 export let ws = null;
 export let users = []; 
@@ -46,10 +41,6 @@ export async function ConnectWebSocket() {
                         ...user, unread: unreadCounts[user.username] || 0
                     }));
                     updateUserList();
-                    if (selectedUser) {
-                        const user = users.find(u => u.username === selectedUser);
-                        updateChatUI(user?.online || false);
-                    }
                     break;
 
                 case "userUpdate":
@@ -57,9 +48,6 @@ export async function ConnectWebSocket() {
                     if (userIndex !== -1) {
                         users[userIndex].online = data.online;
                         updateUserList();
-                        if (selectedUser === data.username) {
-                            updateChatUI(data.online);
-                        }
                     }
                     break;
 
@@ -101,7 +89,6 @@ function handlePrivateMessage(data) {
         unreadCounts[data.sender] = (unreadCounts[data.sender] || 0) + 1;
         updateUserList()
     }
-    console.log("this is the unread count for :", data.sender ,unreadCounts[data.sender])
 
     if (selectedUser === data.sender) {
         appendMessageToChat(data, false);
@@ -116,7 +103,6 @@ export async function sendPrivateMessage() {
     const message = messageInput.value.trim();
 
     const userObj = users.find(u => u.username === selectedUser);
-    console.log("Selected user:", selectedUser);
 
     if (!userObj || !userObj.online) {
       console.log(userObj.online)

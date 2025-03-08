@@ -65,20 +65,14 @@ export async function updateUserList() {
         li.addEventListener("click", () => {
             setSelectedUser(user.username)
             unreadCounts[user.username] = 0;
-            console.log("rest to zero notif", user.username)
-            loadChatWithUser(user.username);
-            openChatBox();
-            updateChatUI(user.online);
             updateUserList();
+            loadChatWithUser(user.username);
+            updateChatUI(user.online);
+            openChatBox();
         });
 
         userList.appendChild(li);
     });
-
-    if (selectedUser) {
-        const user = users.find(u => u.username === selectedUser);
-        updateChatUI(user?.online || false);
-    }
 }
 
 document.getElementById("sendMessageButton")?.addEventListener("click", sendPrivateMessage);

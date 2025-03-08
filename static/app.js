@@ -1,15 +1,16 @@
 import { ShowSection, createChatUI } from './ui.js';
 import { LoadPosts} from './posts.js';
-import { logout, username, setUsername } from './auth.js';
+import { username, setUsername } from './auth.js';
 import { ConnectWebSocket } from './websocket.js';
-import { ws } from './websocket.js';
 
 
-export async function setupAuthenticatedState() {
+export async function setupAuthenticatedState(username) {
+    const userName = document.getElementById("username")
+    userName.innerHTML = username
     ShowSection("posts");
     await LoadPosts();
-    createChatUI();
     await ConnectWebSocket();
+    createChatUI();
 
 }
 
@@ -22,7 +23,7 @@ async function initializeSession() {
             setUsername(userData.username);
             console.log("Auto-login successful for:", username);
             
-            await setupAuthenticatedState();
+            await setupAuthenticatedState(username);
             return true;
         }
         return false;

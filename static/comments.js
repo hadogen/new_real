@@ -22,7 +22,6 @@ export async function handleCreateComment() {
         if (!response.ok){
             if (result.status === 401) {
                 logout();
-                console.log("logged out handleCreateComment");
                 return;
             }
             throw new Error("Failed to create comment");
@@ -33,7 +32,6 @@ export async function handleCreateComment() {
         LoadComments(comment.post_id); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
-        console.log("logged out handleCreateComment");
     }
 }
 
@@ -72,6 +70,5 @@ export async function LoadComments(postId) {
         document.getElementById("message").textContent = "comments loaded"
     } catch (error) {
         document.getElementById("message").textContent = error.message + "in load comments";
-        console.log("logged out LoadComments");
     }
 }

@@ -2,7 +2,6 @@ import { handleCreateComment} from './comments.js'
 import { handleCreatePost, LoadPosts} from './posts.js'
 import {handleLogin, handleRegister, logout} from './auth.js'
 import { sendPrivateMessage,  selectedUser, setSelectedUser } from './websocket.js'
-import {username} from './auth.js'
 
 const sectionTemplates = {
     login: `
@@ -106,7 +105,6 @@ export async function ShowSection(sectionId) {
             const form = document.getElementById("loginForm");
             form?.addEventListener("submit", async (e) => {
                 e.preventDefault();
-                console.log("Login");
                 await handleLogin(e);
             });
         },
@@ -114,7 +112,7 @@ export async function ShowSection(sectionId) {
             const createPostForm = document.getElementById("createPostForm");
             const sendMessageBtn = document.getElementById("sendMessageButton");
 
-            createPostForm?.addEventListener("submit", async (e) => {
+            createPostForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
                 await handleCreatePost(e);
             });
@@ -184,7 +182,7 @@ export function createChatUI() {
         }
     });
     const sendMessageButton = document.getElementById("sendMessageButton");
-    sendMessageButton.addEventListener("click", sendPrivateMessage);
+    sendMessageButton?.addEventListener("click", sendPrivateMessage);
 }
 
 

@@ -1,6 +1,4 @@
-import { ShowSection, createChatUI } from "./ui.js";
-import { ConnectWebSocket } from "./websocket.js";
-import { LoadPosts } from './posts.js';
+import { ShowSection} from "./ui.js";
 import { ws } from './websocket.js';
 import {setupAuthenticatedState } from './app.js';
 
@@ -8,8 +6,9 @@ import {removeChatUI} from './chatUi.js'
 
 
 export let username = null;
-export function setUsername(newUsername) {
 
+
+export function setUsername(newUsername) {
     username = newUsername;
 }
 
@@ -32,16 +31,9 @@ export async function handleLogin() {
             throw new Error(result.error);
         }
 
-        // After successful login, get username
-        const userResponse = await fetch('/current-user');
-        if (!userResponse.ok) {
-            throw new Error('Failed to get user information');
-        }
-        const userData = await userResponse.json();
-        setUsername(userData.username); 
+        setUsername(result.username);
 
-        // Setup authenticated state
-        await setupAuthenticatedState();
+        await setupAuthenticatedState(username);
         document.getElementById("message").textContent = "Login successful";
 
     } catch (error) {
@@ -85,21 +77,23 @@ export async function logout() {
         const response = await fetch("/logout", {
             method: "POST",
         });
-
+        const log = await response.json();
+        
         if (ws) {
             ws.close(1000, "Logged out successfully");
         }
-        
+
         removeChatUI();
         setUsername(null);
         ShowSection("login");
-        
+
+        document.getElementById("username").innerHTML = ""
         document.getElementById("loginId").innerHTML = ""
         document.getElementById("loginPassword").innerHTML ="";
-        document.getElementById("message").textContent = "Logged out successfully";
+
+        document.getElementById("message").textContent = log.message;
 
     } catch (error) {
-        console.error("Logout error:", error.message);
         document.getElementById("message").textContent = "Error during logout";
     }
 }
