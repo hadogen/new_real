@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"html"
 	database "main/Database"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,12 +42,6 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.Contains(comment.Content, "<") || strings.Contains(comment.Content, ">") || strings.Contains(comment.Content, "/") || strings.Contains(comment.Content, "script") {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "bad request"})
-		fmt.Println("Invalid comment")
-		return
-	}
 	commentID := uuid.New().String()
 	createdAt := time.Now().Format(time.RFC3339)
 	comment.Content = html.EscapeString(comment.Content)
@@ -79,13 +71,13 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := database.Db.Query(`
         SELECT 
-            c.id, 
-            c.username, 
-            c.content, 
-            c.created_at
-        FROM comments AS c
-        WHERE c.post_id = ?
-        ORDER BY c.created_at DESC
+            id, 
+            username, 
+            content, 
+            created_at
+        FROM comments 
+        WHERE post_id = ?
+        ORDER BY created_at DESC
     `, postID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -111,8 +103,7 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&comment.ID, &comment.Username, &comment.Content, &comment.CreatedAt)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "ise"})
-
+			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 			return
 		}
 		comments = append(comments, comment)

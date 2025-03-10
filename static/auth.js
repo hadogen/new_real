@@ -64,7 +64,7 @@ export async function handleRegister() {
         if (!response.ok) {
             throw new Error(result.error);
         }
-        document.getElementById("message").textContent =  result.message;
+        document.getElementById("message").textContent = result.message;
         ShowSection("login"); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
@@ -81,6 +81,7 @@ export async function logout() {
         
         if (ws) {
             ws.close(1000, "Logged out successfully");
+            ws = null;
         }
 
         removeChatUI();

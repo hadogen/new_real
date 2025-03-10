@@ -82,6 +82,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	errmsg, resp := ParseInput(user.Nickname, user.Email, user.FirstName, user.LastName, user.Password, user.Gender, user.Age)
+	user.Nickname = html.EscapeString(user.Nickname)
 	if !resp {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": errmsg})
@@ -283,6 +284,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	createdAt := time.Now().Format(time.RFC3339)
 	post.Content = html.EscapeString(post.Content)
 	post.Title = html.EscapeString(post.Title)
+	post.Category = html.EscapeString(post.Category)
 	_, err = database.Db.Exec(`
         INSERT INTO posts (id, username, title, content, category, created_at)
         VALUES (?, ?, ?, ?, ?, ?)

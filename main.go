@@ -28,7 +28,7 @@ func main() {
 	http.HandleFunc("/comments", auth.Middleware(handlers.GetCommentsHandler))
 
 	http.HandleFunc("/ws", auth.Middleware(websocket.HandleWebSocket))
-	
+
 	http.HandleFunc("/private-messages", auth.Middleware(handlers.GetPrivateMessagesHandler))
 	http.HandleFunc("/latest-messages", auth.Middleware(handlers.GetLatestMessageTimesHandler))
 

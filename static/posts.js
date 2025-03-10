@@ -2,10 +2,8 @@ import  {ShowComments} from  './comments.js';
 import {ShowSection} from './ui.js'
 import {logout} from './auth.js'
 
-let isLoading = false;
 let offset = 0;
 let hasMore = true;
-let throttleTimer;
 
 
 export async function handleCreatePost() {
@@ -49,20 +47,14 @@ export async function LoadPosts(isInitial = true) {
             postFeed.innerHTML = "";
         }
 
-        if (!hasMore || isLoading) return;
+        if (!hasMore) return;
 
-        isLoading = true;
-        const loadingIndicator = document.createElement("div");
-        loadingIndicator.className = "loading";
-        loadingIndicator.textContent = "Loading posts...";
-        document.getElementById("postFeed").appendChild(loadingIndicator);
 
         const response = await fetch(`/posts?offset=${offset}` , {
             method: "GET",
         }
         );
 
-        loadingIndicator.remove();
         const posts = await response.json();
         if (!response.ok) {
             if (response.status===401){
@@ -95,26 +87,35 @@ export async function LoadPosts(isInitial = true) {
                 postFeed.appendChild(postElement);
             });
             document.querySelectorAll(".show-comments-btn").forEach(button => {
-                button.addEventListener("click", () => ShowComments(button.dataset.postId));
+                button?.addEventListener("click", () => ShowComments(button.dataset.postId));
             });
             offset += posts.length;
         }
     } catch (error) {
         const messageElement = document.getElementById("message");
-        if (messageElement) {
-            messageElement.textContent = error.message;
-        }
-        console.log("logged out LoadPosts");
-    } finally {
-        isLoading = false;
-    }
+        messageElement.textContent = error.message;
+    } 
 }
 
 
+let lastScrollTime = 0;
 
+const handleScroll = () => {
+    const currentTime = Date.now();
+    
+    if (currentTime - lastScrollTime > 500) {
+        lastScrollTime = currentTime;
+        
+        const scrollPosition = window.innerHeight + window.scrollY;
+        const bodyHeight = document.body.offsetHeight;
 
+        if (scrollPosition >= bodyHeight - 1000) {
+            LoadPosts(false);
+        }
+    }
+};
 
-
-
-
+document.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('scroll', handleScroll);
+});
 

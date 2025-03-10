@@ -76,10 +76,14 @@ nav button:hover {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
 }
+#chlagh{
+  display: flex;
 
+}
 #userListContainer.collapsed {
-  height: 50px;
+  height: 8vh;
   overflow: hidden;
+  min-height: 10ch;
 }
 
 #userListContainer.collapsed #userList {
@@ -253,7 +257,10 @@ nav button:hover {
 }
 
 .sent-message strong {
-  display: none; /* Hide sender name for own messages */
+  color: #000000;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: block;
 }
 
 /* Message Metadata */

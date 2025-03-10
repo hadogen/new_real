@@ -7,6 +7,7 @@ import (
 	database "main/Database"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -94,11 +95,12 @@ func handlePrivateMessage(messageData struct {
 	Receiver string `json:"receiver"`
 	Time     string `json:"time"`
 }) {
+	// messageData.Message = html.EscapeString(messageData.Message)
 	fmt.Println("messageData: ", messageData.Message)
 	_, err := database.Db.Exec(`
 		INSERT INTO private_messages (sender, receiver, message, created_at)
 		VALUES (?, ?, ?, ?)
-	`, messageData.Username, messageData.Receiver, messageData.Message, messageData.Time)
+	`, messageData.Username, messageData.Receiver, messageData.Message, time.Now().Format(time.RFC3339))
 
 	if err != nil {
 		log.Println("Error inserting message into the database:", err)

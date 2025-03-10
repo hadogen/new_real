@@ -6,7 +6,10 @@ import { ConnectWebSocket } from './websocket.js';
 
 export async function setupAuthenticatedState(username) {
     const userName = document.getElementById("username")
-    userName.innerHTML = username
+    userName.textContent = "Welcome " + username
+    userName.style.fontSize = "20px"
+    userName.style.fontWeight = "Bold"
+    userName.style.margin = "1rem"
     ShowSection("posts");
     await LoadPosts();
     await ConnectWebSocket();
@@ -22,7 +25,6 @@ async function initializeSession() {
             const userData = await autoLoginResponse.json();
             setUsername(userData.username);
             console.log("Auto-login successful for:", username);
-            
             await setupAuthenticatedState(username);
             return true;
         }

@@ -2,6 +2,7 @@ import { username } from './auth.js';
 import { selectedUser, setSelectedUser, sendPrivateMessage, ws } from './websocket.js';
 import { logout } from './auth.js';
 import {fetchLatestMessageTimes, users, unreadCounts} from './websocket.js'
+import { toggleElement } from './ui.js';
 
 export function scrollToBottom() {
     const messageBoxContent = document.getElementById("messageBoxContent");
@@ -89,60 +90,35 @@ export function showNotification(sender) {
 }
 
 function openChatBox() {
-    const messageBox = document.getElementById("messageBox");
-    const toggleButton = document.getElementById("toggleMessageBox");
-    if (messageBox && toggleButton) {
-        messageBox.classList.remove("collapsed");
-        toggleButton.textContent = "▼";
-        const messageInput = document.getElementById("messageInput");
-        if (messageInput) messageInput.focus();
-    }
-  }
+    toggleElement("messageBox", "toggleMessageBox", true);
+    const messageInput = document.getElementById("messageInput");
+    const userObj = users.find(u => u.username === selectedUser);
+    updateChatUI(userObj?.online);
+    if (messageInput) messageInput.focus();
+}
 
 export function removeChatUI() {
     const userListContainer = document.getElementById('userListContainer');
     const messageBox = document.getElementById('messageBox');
-    
-    if (userListContainer) {
-        userListContainer.remove();
-    }
-    if (messageBox) {
-        messageBox.remove();
-    }
-}
 
+        userListContainer?.remove();
+        messageBox?.remove();
+    }
 
+let lastScrollTime = 0;
 async function handleScroll() {
     const messageBoxContent = document.getElementById("messageBoxContent");
     if (!messageBoxContent || isLoadingMessages || !oldestMessageDate || isEndOfMessages) return;
 
-    if (messageBoxContent.scrollTop < 100) {
-        if (loadingDebounceTimer) {
-            clearTimeout(loadingDebounceTimer);
-        }
-
-        loadingDebounceTimer = setTimeout(async () => {
-            await loadOlderMessages();
-        }, 500);
+    const currentTime = Date.now();
+    
+    if (messageBoxContent.scrollTop < 100 && currentTime - lastScrollTime > 500) {
+        lastScrollTime = currentTime; 
+        await loadOlderMessages(); 
     }
 }
 
-document.getElementById("toggleMessageBox")?.addEventListener("click", () => {
-    const messageBox = document.getElementById("messageBox");
-    const toggleButton = document.getElementById("toggleMessageBox");
-  
-    if (messageBox.classList.contains("collapsed")) {
-        messageBox.classList.remove("collapsed");
-        toggleButton.textContent = "▼";
-
-        const userObj = users.find(u => u.username === selectedUser);
-        updateChatUI(userObj?.online);
-    } else {
-        messageBox.classList.add("collapsed");
-        toggleButton.textContent = "▲";
-        updateChatUI(false);
-    }
-  });
+document.getElementById("toggleMessageBox")?.addEventListener("click", toggleElement);
   
 
   
@@ -153,18 +129,19 @@ export function createMessageElement(sender, message, timestamp, isSent) {
         minute: '2-digit'
     });
 
+
     messageItem.innerHTML = `
         ${!isSent ? `<strong>${sender}</strong>` : `<strong>${username}</strong>`}
-        <span class="message-content">${message}</span>
+        <span class="message-content"></span>
         <span class="message-time">${timeFormatted}</span>
     `;
+    messageItem.querySelector(".message-content").textContent = message;
 
     messageItem.classList.add(isSent ? 'sent-message' : 'received-message');
     return messageItem;
 }
 
 let isEndOfMessages = false;
-let loadingDebounceTimer = null;
 let oldestMessageDate = null;
 let isLoadingMessages = false;
 
@@ -179,9 +156,6 @@ export async function loadChatWithUser(user) {
     isEndOfMessages = false;
     oldestMessageDate = null;
     isLoadingMessages = false;
-    if (loadingDebounceTimer) {
-        clearTimeout(loadingDebounceTimer);
-    }
 
     messageList.innerHTML = "";
     try {
@@ -211,7 +185,6 @@ export async function loadChatWithUser(user) {
                 oldestMessageDate = messages[0].created_at;
             }
 
-            setTimeout(scrollToBottom, 0);
         }
 
         const messageBoxContent = document.getElementById("messageBoxContent");
@@ -219,7 +192,6 @@ export async function loadChatWithUser(user) {
             messageBoxContent.removeEventListener("scroll", handleScroll);
             messageBoxContent.addEventListener("scroll", handleScroll);
         }
-
         scrollToBottom();
 
     } catch (error) {

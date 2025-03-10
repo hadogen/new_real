@@ -77,12 +77,10 @@ export async function fetchLatestMessageTimes() {
     }
 }
 
-let messages = {};
 export let unreadCounts = {};
 
 function handlePrivateMessage(data) {
-    if (!messages[data.sender]) messages[data.sender] = [];
-    messages[data.sender].push(data);
+
 
     if (selectedUser !== data.sender) {
         showNotification(data.sender);

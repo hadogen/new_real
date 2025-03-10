@@ -1,7 +1,8 @@
 import { handleCreateComment} from './comments.js'
 import { handleCreatePost, LoadPosts} from './posts.js'
 import {handleLogin, handleRegister, logout} from './auth.js'
-import { sendPrivateMessage,  selectedUser, setSelectedUser } from './websocket.js'
+import { sendPrivateMessage, setSelectedUser } from './websocket.js'
+import { updateChatUI } from './chatUi.js';
 
 const sectionTemplates = {
     login: `
@@ -70,6 +71,7 @@ const sectionTemplates = {
 
 export async function ShowSection(sectionId) {
     const dynamicContent = document.getElementById("dynamicContent");
+    document.getElementById("message").innerHTML = ''
     dynamicContent.innerHTML = sectionTemplates[sectionId] || "<p>Section not found.</p>";
 
     const navElements = {
@@ -85,8 +87,8 @@ export async function ShowSection(sectionId) {
         navElements.navLogin.style.display = "block";
         navElements.navRegister.style.display = "block";
     } else if (sectionId === "posts" || sectionId === "comments") {
-        document.getElementById("navBack").addEventListener("click", () => LoadPosts());
-        document.getElementById("navLogout").addEventListener("click", () => logout());
+        document.getElementById("navBack")?.addEventListener("click", () => LoadPosts());
+        document.getElementById("navLogout")?.addEventListener("click", () => logout());
         navElements.navBack.style.display = "block";
         navElements.navLogout.style.display = "block";
         navElements.navLogin.style.display = "none";
@@ -112,7 +114,7 @@ export async function ShowSection(sectionId) {
             const createPostForm = document.getElementById("createPostForm");
             const sendMessageBtn = document.getElementById("sendMessageButton");
 
-            createPostForm.addEventListener("submit", async (e) => {
+            createPostForm?.addEventListener("submit", async (e) => {
                 e.preventDefault();
                 await handleCreatePost(e);
             });
@@ -133,18 +135,18 @@ export async function ShowSection(sectionId) {
 }
 
 export function createChatUI() {
-    // Create the user list container
     const userListContainer = document.createElement('div');
     userListContainer.id = 'userListContainer';
     userListContainer.innerHTML = `
         <div class="user-list-header">
+        <div id="chlagh">
             <h2>Users</h2>
             <button id="toggleUserList">▼</button>
+            </div>
         </div>
         <ul id="userList"></ul>
     `;
 
-    // Create the message box
     const messageBox = document.createElement('div');
     messageBox.id = 'messageBox';
     messageBox.className = 'collapsed';
@@ -163,59 +165,44 @@ export function createChatUI() {
         <button id="sendMessageButton">Send</button>
     `;
 
-    // Append both containers to the body
     document.body.appendChild(userListContainer);
     document.body.appendChild(messageBox);
-
-    // Add toggle functionality for the user list
-    document.getElementById("toggleUserList").addEventListener("click", () => {
-        userListContainer.classList.toggle("collapsed");
-        const button = document.getElementById("toggleUserList");
-        button.textContent = userListContainer.classList.contains("collapsed") ? "▲" : "▼";
+    
+    document.getElementById("toggleUserList")?.addEventListener("click", () => {
+        toggleElement("userListContainer", "toggleUserList");
     });
 
-    // Add toggle functionality for the message box
-    document.getElementById("toggleMessageBox").addEventListener("click", () => {
-        const messageBox = document.getElementById("messageBox");
-        const toggleButton = document.getElementById("toggleMessageBox");
-        const selectedUserName = document.getElementById("selectedUserName");
-
-        if (messageBox.classList.contains("collapsed")) {
-            messageBox.classList.remove("collapsed");
-            selectedUserName.textContent = selectedUser;
-            toggleButton.textContent = "▼";
-        } else {
-            messageBox.classList.add("collapsed");
-            toggleButton.textContent = "▲";
-            setSelectedUser(null);
-            selectedUserName.textContent = "";
-            document.getElementById("messageList").innerHTML = "";
-        }
+    document.getElementById("toggleMessageBox")?.addEventListener("click", () => {
+        toggleElement("messageBox", "toggleMessageBox");
     });
 
     const sendMessageButton = document.getElementById("sendMessageButton");
-    sendMessageButton.addEventListener("click", sendPrivateMessage);
+    sendMessageButton?.addEventListener("click", sendPrivateMessage);
 }
 
-function throttle(func, limit) {
-    let inThrottle;
-    return function(...args) {
-        if (!inThrottle) {
-            func.apply(this, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
+export function toggleElement(elementId, buttonId, forceOpen = false) {
+    const element = document.getElementById(elementId);
+    const button = document.getElementById(buttonId);
+
+    if (!element || !button) return;
+
+    if (forceOpen) {
+        element.classList.remove("collapsed");
+        button.textContent = "▼";
+    } else {
+        element.classList.toggle("collapsed");
+        button.textContent = element.classList.contains("collapsed") ? "▲" : "▼";
+        updateChatUI(true)
+    }
+
+    if (elementId === "messageBox" && element.classList.contains("collapsed")) {
+        setSelectedUser(null);
+        updateChatUI(false);
+        document.getElementById("selectedUserName").textContent = "";
+        document.getElementById("messageList").innerHTML = "";
     }
 }
 
-const handleScroll = throttle(() => {
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const bodyHeight = document.body.offsetHeight;
-    
-    if (scrollPosition >= bodyHeight - 1000) {
-        LoadPosts(false);
-    }
-}, 500);
 
 
 
