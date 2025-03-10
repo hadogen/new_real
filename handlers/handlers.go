@@ -49,12 +49,12 @@ func ParseInput(nickname, email, firstname, lastname, password, gender string, a
 		return "Invalid email format", false
 	}
 
-	nicknameRegex := regexp.MustCompile(`^[a-zA-Z0-9_-]{3,30}$`)
+	nicknameRegex := regexp.MustCompile(`^[a-zA-Z0-9_-]{3,10}$`)
 	if !nicknameRegex.MatchString(nickname) {
 		return "Invalid nickname format", false
 	}
 
-	nameRegex := regexp.MustCompile(`^[a-zA-Z\s-]{2,50}$`)
+	nameRegex := regexp.MustCompile(`^[a-zA-Z\s-]{3,10}$`)
 	if !nameRegex.MatchString(firstname) || !nameRegex.MatchString(lastname) {
 		return "Invalid name format", false
 	}
@@ -127,7 +127,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Bad Request"})
-
 		return
 	}
 
@@ -143,7 +142,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = database.Db.QueryRow(`
         SELECT nickname, password FROM users
-        WHERE nickname = ? OR email = ?
+        WHERE nickname = ? OR email = ?;
     `, credentials.Login, credentials.Login).Scan(&user.Nickname, &user.Password)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -182,7 +181,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Expires: expiration,
 		Path:    "/",
 	})
-	fmt.Println("session created for : ",user.Nickname , session)
 
 	_, err = database.Db.Exec(`
         INSERT INTO sessions (session, nickname, expiration)
@@ -237,8 +235,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		delete(websocket.OnlineConnections.Clients, username)
-		
+		delete(websocket.OnlineConnections.Clients, username)		
 		fmt.Println("User logged out and connection deleted :", username)
 	}
 	websocket.OnlineConnections.Mutex.Unlock()

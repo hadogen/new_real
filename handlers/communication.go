@@ -100,7 +100,7 @@ func GetLatestMessageTimesHandler(w http.ResponseWriter, r *http.Request) {
 		CASE WHEN sender = ? THEN receiver ELSE sender END as other_user, 
     	MAX(created_at) as latest_message 
 	FROM private_messages 
-		WHERE sender = ? OR receiver = 'popo' 
+		WHERE sender = ? OR receiver = ? 
 		GROUP BY CASE WHEN sender = ? THEN receiver ELSE sender END;
     `, username, username, username)
 	if err != nil {
@@ -109,7 +109,6 @@ func GetLatestMessageTimesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	fmt.Println("loaded latest communications between other users and :", username)
 	latestMessages := map[string]string{}
 	for rows.Next() {
 		var otherUser, latestMessage string
