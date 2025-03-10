@@ -102,8 +102,9 @@ func GetLatestMessageTimesHandler(w http.ResponseWriter, r *http.Request) {
 	FROM private_messages 
 		WHERE sender = ? OR receiver = ? 
 		GROUP BY CASE WHEN sender = ? THEN receiver ELSE sender END;
-    `, username, username, username)
+    `, username, username, username, username)
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

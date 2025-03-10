@@ -133,13 +133,18 @@ export async function ShowSection(sectionId) {
 }
 
 export function createChatUI() {
+    // Create the user list container
     const userListContainer = document.createElement('div');
     userListContainer.id = 'userListContainer';
     userListContainer.innerHTML = `
-        <h2>Users</h2>
+        <div class="user-list-header">
+            <h2>Users</h2>
+            <button id="toggleUserList">▼</button>
+        </div>
         <ul id="userList"></ul>
     `;
 
+    // Create the message box
     const messageBox = document.createElement('div');
     messageBox.id = 'messageBox';
     messageBox.className = 'collapsed';
@@ -158,33 +163,39 @@ export function createChatUI() {
         <button id="sendMessageButton">Send</button>
     `;
 
+    // Append both containers to the body
     document.body.appendChild(userListContainer);
     document.body.appendChild(messageBox);
 
+    // Add toggle functionality for the user list
+    document.getElementById("toggleUserList").addEventListener("click", () => {
+        userListContainer.classList.toggle("collapsed");
+        const button = document.getElementById("toggleUserList");
+        button.textContent = userListContainer.classList.contains("collapsed") ? "▲" : "▼";
+    });
+
+    // Add toggle functionality for the message box
     document.getElementById("toggleMessageBox").addEventListener("click", () => {
         const messageBox = document.getElementById("messageBox");
         const toggleButton = document.getElementById("toggleMessageBox");
         const selectedUserName = document.getElementById("selectedUserName");
-        
+
         if (messageBox.classList.contains("collapsed")) {
             messageBox.classList.remove("collapsed");
             selectedUserName.textContent = selectedUser;
             toggleButton.textContent = "▼";
-            console.log("not collapsed" );
         } else {
             messageBox.classList.add("collapsed");
             toggleButton.textContent = "▲";
-            toggleButton.style.marginTop = "0";
-            setSelectedUser(null); 
+            setSelectedUser(null);
             selectedUserName.textContent = "";
-            console.log("collapesed");
             document.getElementById("messageList").innerHTML = "";
         }
     });
-    const sendMessageButton = document.getElementById("sendMessageButton");
-    sendMessageButton?.addEventListener("click", sendPrivateMessage);
-}
 
+    const sendMessageButton = document.getElementById("sendMessageButton");
+    sendMessageButton.addEventListener("click", sendPrivateMessage);
+}
 
 function throttle(func, limit) {
     let inThrottle;

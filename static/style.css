@@ -72,19 +72,47 @@ nav button:hover {
   border-radius: 8px;
   width: 200px;
   z-index: 100;
-  display: block; 
+  display: block;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-@media (min-width: 992px) {
-  #userListContainer {
-    display: block;
-  }
+#userListContainer.collapsed {
+  height: 50px;
+  overflow: hidden;
+}
+
+#userListContainer.collapsed #userList {
+  display: none;
+}
+
+.user-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding-bottom: 10px;
+}
+
+#toggleUserList {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 0 5px;
+  color: #3498db;
+}
+
+#toggleUserList:hover {
+  color: #2c3e50;
 }
 
 #userList {
   list-style: none;
   padding: 0;
   margin: 0;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 #userList li:hover {
@@ -96,6 +124,8 @@ nav button:hover {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
+  margin: 4px 0;
+  border-radius: 4px;
   transition: background-color 0.2s;
 }
 
@@ -183,10 +213,8 @@ nav button:hover {
 }
 
 #messageBoxContent {
-  /* background: #ffffff; */
   padding: 15px;
   border-radius: 1rem;
-  /* box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); */
   overflow-y: auto;
   flex-grow: 1;
   max-height: calc(70vh - 50px);
@@ -340,8 +368,6 @@ button:hover {
   background: #03f091;
 }
 
-
-
 /* Posts and Comments */
 .post,
 .comment {
@@ -398,8 +424,6 @@ button:hover {
 #messageBoxContent::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
-
-
 
 /* Mobile-first message box */
 .message-box-controls {
@@ -485,5 +509,5 @@ button:hover {
 }
 
 h1#post-cat {
-color:   rgb(52 152 219);
+  color: rgb(52 152 219);
 }
