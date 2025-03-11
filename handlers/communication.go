@@ -36,7 +36,7 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
             FROM private_messages
             WHERE ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?))
             AND created_at < ?
-            ORDER BY created_at ASC
+            ORDER BY created_at DESC
             LIMIT 10
         `, sender, receiver, receiver, sender, before)
 	} else {

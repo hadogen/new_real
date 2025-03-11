@@ -146,114 +146,82 @@ let oldestMessageDate = null;
 let isLoadingMessages = false;
 
 export async function loadChatWithUser(user) {
-
     const currentUsername = username;
-    if (!currentUsername) return;
-
     const messageList = document.getElementById("messageList");
     if (!messageList) return;
 
-    isEndOfMessages = false;
-    oldestMessageDate = null;
-    isLoadingMessages = false;
-
     messageList.innerHTML = "";
-    try {
-        const response = await fetch(
-            `/private-messages?sender=${currentUsername}&receiver=${user}`
-        );
-        const messages = await response.json();
-        if (!response.ok) {
-            if (response.status === 401) {
-                logout();
-                throw new Error("Not authorized");
-            }
-            throw new Error(messages.error);
-        }
-        if (Array.isArray(messages)) {
-            messages.reverse().forEach((msg) => {
-                const messageItem = createMessageElement(
-                    msg.sender,
-                    msg.message,
-                    msg.created_at,
-                    msg.sender === currentUsername
-                );
-                messageList.appendChild(messageItem);
-            });
-
-            if (messages.length > 0) {
-                oldestMessageDate = messages[0].created_at;
-            }
-
-        }
-
-        const messageBoxContent = document.getElementById("messageBoxContent");
-        if (messageBoxContent) {
-            messageBoxContent.removeEventListener("scroll", handleScroll);
-            messageBoxContent.addEventListener("scroll", handleScroll);
-        }
-        scrollToBottom();
-
-    } catch (error) {
-        console.error("Error loading chat with user:", error);
-        document.getElementById("messageList").textContent = error.message;
-    }
-}
-
-
-export async function loadOlderMessages() {
-    console.log("Loading older messages...");
-    if (isEndOfMessages) return;
-
-    isLoadingMessages = true;
-    const messageBoxContent = document.getElementById("messageBoxContent");
-    const messageList = document.getElementById("messageList");
-    const prevHeight = messageBoxContent.scrollHeight;
 
     try {
-        const currentUsername = username;
-        const response = await fetch(
-            `/private-messages?sender=${currentUsername}&receiver=${selectedUser}&before=${oldestMessageDate}`
-        );
+        const response = await fetch(`/private-messages?sender=${currentUsername}&receiver=${user}`);
         const messages = await response.json();
-        if (!response.ok) {
-            if (response.status === 401) {
-                logout();
-                throw new Error("Not authorized");
-            }
-            throw new Error(messages.error);
-        }
-        if (!Array.isArray(messages) || messages.length === 0) {
-            isEndOfMessages = true;
-            const endMessage = document.createElement('div');
-            endMessage.className = 'end-messages-indicator';
-            endMessage.textContent = 'No more messages to load';
-            endMessage.style.textAlign = 'center';
-            endMessage.style.color = '#888';
-            endMessage.style.padding = '10px';
-            endMessage.style.fontSize = '0.9em';
-            messageList.prepend(endMessage);
-            return;
-        }
 
-        oldestMessageDate = messages[0].created_at;
+        // Reverse the messages to display oldest first
+        const reversedMessages = messages.reverse();
 
-        messages.reverse().forEach((msg) => {
-            console.log(msg);
+        reversedMessages.forEach((msg) => {
             const messageItem = createMessageElement(
                 msg.sender,
                 msg.message,
                 msg.created_at,
                 msg.sender === currentUsername
             );
-            messageList.prepend(messageItem);
+            messageList.appendChild(messageItem); // Append to list
         });
 
-        messageBoxContent.scrollTop = messageBoxContent.scrollHeight - prevHeight;
+        // Set oldestMessageDate to the oldest message in the current batch
+        if (reversedMessages.length > 0) {
+            oldestMessageDate = reversedMessages[0].created_at;
+        }
+        const messageBoxContent = document.getElementById("messageBoxContent");
+        if (messageBoxContent) {
+            messageBoxContent.removeEventListener("scroll", handleScroll);
+            messageBoxContent.addEventListener("scroll", handleScroll);
+        }
+        scrollToBottom(); // Scroll to the bottom (newest message)
+    } catch (error) {
+        console.error("Error loading chat:", error);
+    }
+}
 
+export async function loadOlderMessages() {
+    if (isEndOfMessages || isLoadingMessages || !oldestMessageDate) return;
+
+    isLoadingMessages = true;
+    const currentUsername = username;
+    const messageList = document.getElementById("messageList");
+    const prevScrollHeight = messageBoxContent.scrollHeight;
+
+    try {
+        const response = await fetch(
+            `/private-messages?sender=${currentUsername}&receiver=${selectedUser}&before=${oldestMessageDate}`
+        );
+        const messages = await response.json();
+
+        if (messages.length === 0) {
+            isEndOfMessages = true;
+            return;
+        }
+
+        // Reverse the new messages to maintain chronological order
+        // const reversedMessages = messages.reverse();
+
+
+        messages.forEach((msg) => {
+            const messageItem = createMessageElement(
+                msg.sender,
+                msg.message,
+                msg.created_at,
+                msg.sender === currentUsername
+            );
+            messageList.prepend(messageItem); 
+        });
+
+        oldestMessageDate = messages[messages.length-1].created_at;
+
+        messageBoxContent.scrollTop = messageBoxContent.scrollHeight - prevScrollHeight;
     } catch (error) {
         console.error("Error loading older messages:", error);
-        document.getElementById("messageList").textContent = error.message;
     } finally {
         isLoadingMessages = false;
     }
