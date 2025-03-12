@@ -23,7 +23,6 @@ func InitDB() (*sql.DB, error) {
 		log.Fatal(err)
 		return nil, err
 	}
-	fmt.Println("Database and tables created successfully!")
 	return Db, nil
 }
 

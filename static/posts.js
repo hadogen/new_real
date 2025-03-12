@@ -100,7 +100,7 @@ export async function LoadPosts(isInitial = true) {
 
 let lastScrollTime = 0;
 
-const handleScroll = () => {
+export const handleScroll = () => {
     const currentTime = Date.now();
     
     if (currentTime - lastScrollTime > 500) {
@@ -114,8 +114,4 @@ const handleScroll = () => {
         }
     }
 };
-
-document.addEventListener('DOMContentLoaded', () => {
-    window.addEventListener('scroll', handleScroll);
-});
 

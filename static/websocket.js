@@ -1,4 +1,4 @@
-import { username } from "./auth.js";
+import { logout, username } from "./auth.js";
 import {  
     updateChatUI, 
     showNotification, 
@@ -13,14 +13,23 @@ export let users = [];
 export function setSelectedUser(user) {
     selectedUser = user;
 }
+export function closeWebsoc(ws){
+    ws.close(1000, "Webscoket closed")
+    ws = null
+}
 
 export async function ConnectWebSocket() {
     try {
         ws = new WebSocket("ws://localhost:8080/ws");
 
         ws.onopen = () => {
+            const sessionCookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('session='))
+            ?.split('=')[1];
+        
             console.log("WebSocket connection opened");
-            ws.send(JSON.stringify({ type: "requestUsers" }));
+            ws.send(JSON.stringify({ type: "requestUsers", session:sessionCookie, }));
         };
 
         ws.onclose = () => {
@@ -44,16 +53,26 @@ export async function ConnectWebSocket() {
                     break;
 
                 case "userUpdate":
-                    const userIndex = users.findIndex(u => u.username === data.username);
-                    if (userIndex !== -1) {
-                        users[userIndex].online = data.online;
+                    const userObj = users.find(u => u.username === data.username);
+                    if (userObj) {
+                        userObj.online = data.online;
                         updateUserList();
+                    } else {
+                        const sessionCookie = document.cookie
+                        .split('; ')
+                        .find(row => row.startsWith('session='))
+                        ?.split('=')[1];
+                    
+                        ws.send(JSON.stringify({ type: "requestUsers", session:sessionCookie }));
                     }
                     break;
 
                 case "private":
                     handlePrivateMessage(data);
                     break;
+                case "logout" :
+                        await logout();
+                        break
 
                 default:
                     console.log("Unknown message type:", data.type);
@@ -68,11 +87,15 @@ export async function fetchLatestMessageTimes() {
     try {
         const response = await fetch(`/latest-messages?username=${username}`);
         if (!response.ok) {
+            if (response.status === 401) {
+                await logout();
+                return {};
+            }
             throw new Error("Failed to fetch latest message times");
         }
         return await response.json();
     } catch (error) {
-        console.error("Error fetching latest message times:", error);
+        console.log("Error fetching latest message times:", error);
         return {};
     }
 }
@@ -103,7 +126,6 @@ export async function sendPrivateMessage() {
     const userObj = users.find(u => u.username === selectedUser);
 
     if (!userObj || !userObj.online) {
-      console.log(userObj.online)
         alert("This user is offline. You cannot send messages right now.");
         return;
     }
@@ -112,6 +134,11 @@ export async function sendPrivateMessage() {
         const currentUsername = username;
         if (!currentUsername) return;
 
+        const sessionCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('session='))
+        ?.split('=')[1];
+    
         const timestamp = new Date().toISOString();
         ws.send(
             JSON.stringify({
@@ -120,6 +147,7 @@ export async function sendPrivateMessage() {
                 receiver: selectedUser,
                 message: message,
                 time: timestamp,
+                session : sessionCookie,
             })
         );
 

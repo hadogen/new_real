@@ -44,7 +44,6 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 func AutoLoginHandler(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
-		fmt.Println("No session cookie found in auto login")
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error" : "Not authorized"})
 		return

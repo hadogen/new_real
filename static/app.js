@@ -24,13 +24,12 @@ async function initializeSession() {
         if (autoLoginResponse.ok) {
             const userData = await autoLoginResponse.json();
             setUsername(userData.username);
-            console.log("Auto-login successful for:", username);
             await setupAuthenticatedState(username);
             return true;
         }
         return false;
     } catch (error) {
-        console.error('Error during auto-login:', error);
+        console.log('Error during auto-login:', error);
         return false;
     }
 }
@@ -43,10 +42,4 @@ document.addEventListener("DOMContentLoaded", async () => {
         ShowSection("login");
         return
     }
-
-    document.getElementById("navRegister").addEventListener("click", () => ShowSection("register"));
-    document.getElementById("navLogin").addEventListener("click", () => ShowSection("login"));
-
-       
-
 });

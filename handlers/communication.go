@@ -76,7 +76,6 @@ func GetPrivateMessagesHandler(w http.ResponseWriter, r *http.Request) {
 			"created_at": createdAt,
 		})
 	}
-	fmt.Println("messages loaded")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(messages)
 }

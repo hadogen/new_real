@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 	database "main/Database"
 	"net/http"
@@ -49,17 +50,14 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	OnlineConnections.Mutex.Lock()
 	OnlineConnections.Clients[username] = append(OnlineConnections.Clients[username], conn)
-	fmt.Println("this user ", username, "has these connections: ", len(OnlineConnections.Clients[username]))
 	OnlineConnections.Mutex.Unlock()
 
 	BroadcastUserStatus(username, true)
-
 	sendFullUserStatus(conn)
 
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err)
 			break
 		}
 
@@ -69,22 +67,26 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			Message  string `json:"message"`
 			Receiver string `json:"receiver"`
 			Time     string `json:"time"`
+			Session  string `json:"session"`
 		}
 		err = json.Unmarshal(msg, &messageData)
 		if err != nil {
 			log.Println("Error unmarshalling message:", err)
 			continue
 		}
-
-		switch messageData.Type {
-		case "message":
-			fmt.Println("handling pm", messageData.Message)
-			handlePrivateMessage(messageData)
-		case "requestUsers":
-			sendFullUserStatus(conn)
+		if isValidSession(messageData.Session) {
+			switch messageData.Type {
+			case "message":
+				fmt.Println("handling pm", messageData.Message)
+				handlePrivateMessage(messageData)
+			case "requestUsers":
+				sendFullUserStatus(conn)
+			}
+		} else {
+			conn.WriteMessage(websocket.TextMessage, []byte(`{"type": "logout"}`))
+			break
 		}
 	}
-	fmt.Println("closing connection ", username)
 	handleDisconnection(username, conn)
 }
 
@@ -94,9 +96,9 @@ func handlePrivateMessage(messageData struct {
 	Message  string `json:"message"`
 	Receiver string `json:"receiver"`
 	Time     string `json:"time"`
+	Session  string `json:"session"`
 }) {
-	// messageData.Message = html.EscapeString(messageData.Message)
-	fmt.Println("messageData: ", messageData.Message)
+	messageData.Message = html.EscapeString(messageData.Message)
 	_, err := database.Db.Exec(`
 		INSERT INTO private_messages (sender, receiver, message, created_at)
 		VALUES (?, ?, ?, ?)
@@ -134,7 +136,7 @@ func BroadcastUserStatus(username string, online bool) {
 	OnlineConnections.Mutex.Lock()
 	defer OnlineConnections.Mutex.Unlock()
 
-	msg := map[string]interface{}{
+	msg := map[string]any{
 		"type":     "userUpdate",
 		"username": username,
 		"online":   online,
@@ -161,7 +163,6 @@ func handleDisconnection(username string, conn *websocket.Conn) {
 		OnlineConnections.Clients[username] = newConns
 
 		if len(newConns) == 0 {
-			fmt.Println("loging out bcz no connections left for ", username)
 			delete(OnlineConnections.Clients, username)
 			go BroadcastUserStatus(username, false)
 		}
@@ -178,16 +179,34 @@ func sendFullUserStatus(conn *websocket.Conn) {
 		return
 	}
 
-	response := make([]map[string]interface{}, len(allUsers))
+	response := make([]map[string]any, len(allUsers))
 	for i, user := range allUsers {
-		response[i] = map[string]interface{}{
+		response[i] = map[string]any{
 			"username": user,
 			"online":   len(OnlineConnections.Clients[user]) > 0,
 		}
 	}
 
-	conn.WriteJSON(map[string]interface{}{
+	conn.WriteJSON(map[string]any{
 		"type":  "fullUserStatus",
 		"users": response,
 	})
+}
+
+func isValidSession(sessionID string) bool {
+	var dbsession string
+	var expiration time.Time
+
+	err := database.Db.QueryRow(`
+		SELECT session, expiration FROM sessions 
+		WHERE session = ?
+	`, sessionID).Scan(&dbsession, &expiration)
+
+	if err != nil || time.Now().After(expiration) || dbsession != sessionID {
+		if err == nil {
+			_, _ = database.Db.Exec("DELETE FROM sessions WHERE session = ?", sessionID)
+		}
+		return false
+	}
+	return true
 }

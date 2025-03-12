@@ -1,5 +1,5 @@
 import { handleCreateComment} from './comments.js'
-import { handleCreatePost, LoadPosts} from './posts.js'
+import { handleCreatePost, LoadPosts, handleScroll} from './posts.js'
 import {handleLogin, handleRegister, logout} from './auth.js'
 import { sendPrivateMessage, setSelectedUser } from './websocket.js'
 import { updateChatUI } from './chatUi.js';
@@ -81,14 +81,21 @@ export async function ShowSection(sectionId) {
         navRegister: document.getElementById("navRegister")
     };
 
+    navElements.navLogin?.addEventListener("click", () => ShowSection("login"))
+    navElements.navRegister?.addEventListener("click", () => ShowSection("register"))
+
     if (sectionId === "login" || sectionId === "register") {
         navElements.navBack.style.display = "none";
         navElements.navLogout.style.display = "none";
         navElements.navLogin.style.display = "block";
         navElements.navRegister.style.display = "block";
+        window.removeEventListener('scroll', handleScroll)
+        document.getElementById("navBack")?.removeEventListener("click", LoadPosts);
+        document.getElementById("navLogout")?.removeEventListener("click",logout);
     } else if (sectionId === "posts" || sectionId === "comments") {
-        document.getElementById("navBack")?.addEventListener("click", () => LoadPosts());
-        document.getElementById("navLogout")?.addEventListener("click", () => logout());
+        window.addEventListener('scroll', handleScroll);
+        document.getElementById("navBack")?.addEventListener("click", LoadPosts);
+        document.getElementById("navLogout")?.addEventListener("click",logout);
         navElements.navBack.style.display = "block";
         navElements.navLogout.style.display = "block";
         navElements.navLogin.style.display = "none";

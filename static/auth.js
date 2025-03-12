@@ -4,7 +4,7 @@ import {setupAuthenticatedState } from './app.js';
 
 import {removeChatUI} from './chatUi.js'
 
-
+import {closeWebsoc} from './websocket.js'
 export let username = null;
 
 
@@ -38,8 +38,6 @@ export async function handleLogin() {
 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
-        console.error('Login error:', error);
-        console.log("logged out handleLogin");
     }
 }
 
@@ -68,33 +66,26 @@ export async function handleRegister() {
         ShowSection("login"); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
-        console.log("logged out handleRegister");
     }
 }
 
 export async function logout() {
     try {
-        const response = await fetch("/logout", {
+         await fetch("/logout", {
             method: "POST",
         });
-        const log = await response.json();
         
         if (ws) {
-            ws.close(1000, "Logged out successfully");
-            ws = null;
+            closeWebsoc(ws)
         }
 
         removeChatUI();
         setUsername(null);
         ShowSection("login");
-
-        document.getElementById("username").innerHTML = ""
-        document.getElementById("loginId").innerHTML = ""
-        document.getElementById("loginPassword").innerHTML ="";
-
-        document.getElementById("message").textContent = log.message;
-
+        document.getElementById("username").textContent = ""
+        document.getElementById("message").textContent = "Logout succesfull";
     } catch (error) {
-        document.getElementById("message").textContent = "Error during logout";
+        document.getElementById("message").textContent = "Fetch logout error";
+        console.error(error)
     }
 }

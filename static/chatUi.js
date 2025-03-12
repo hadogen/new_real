@@ -1,6 +1,5 @@
 import { username } from './auth.js';
 import { selectedUser, setSelectedUser, sendPrivateMessage, ws } from './websocket.js';
-import { logout } from './auth.js';
 import {fetchLatestMessageTimes, users, unreadCounts} from './websocket.js'
 import { toggleElement } from './ui.js';
 
@@ -26,7 +25,6 @@ export function updateChatUI(isActive) {
 export async function updateUserList() {
     const userList = document.getElementById("userList");
     if (!userList) return;
-
     const latestMessageTimes = await fetchLatestMessageTimes();
 
     users.sort((a, b) => {
@@ -58,7 +56,7 @@ export async function updateUserList() {
 
         if (unreadCounts[user.username] > 0) {
             const badge = document.createElement("span");
-            badge.textContent = ` (${unreadCounts[user.username]})`;
+            badge.textContent = `${unreadCounts[user.username]}`;
             badge.style.color = "red";
             li.appendChild(badge);
         }
@@ -149,14 +147,13 @@ export async function loadChatWithUser(user) {
     const currentUsername = username;
     const messageList = document.getElementById("messageList");
     if (!messageList) return;
-
+    
     messageList.innerHTML = "";
 
     try {
         const response = await fetch(`/private-messages?sender=${currentUsername}&receiver=${user}`);
         const messages = await response.json();
 
-        // Reverse the messages to display oldest first
         const reversedMessages = messages.reverse();
 
         reversedMessages.forEach((msg) => {
@@ -166,10 +163,9 @@ export async function loadChatWithUser(user) {
                 msg.created_at,
                 msg.sender === currentUsername
             );
-            messageList.appendChild(messageItem); // Append to list
+            messageList.appendChild(messageItem);
         });
 
-        // Set oldestMessageDate to the oldest message in the current batch
         if (reversedMessages.length > 0) {
             oldestMessageDate = reversedMessages[0].created_at;
         }
@@ -178,16 +174,15 @@ export async function loadChatWithUser(user) {
             messageBoxContent.removeEventListener("scroll", handleScroll);
             messageBoxContent.addEventListener("scroll", handleScroll);
         }
-        scrollToBottom(); // Scroll to the bottom (newest message)
+        scrollToBottom();
     } catch (error) {
         console.error("Error loading chat:", error);
     }
 }
 
 export async function loadOlderMessages() {
-    if (isEndOfMessages || isLoadingMessages || !oldestMessageDate) return;
+    if (isEndOfMessages || !oldestMessageDate) return;
 
-    isLoadingMessages = true;
     const currentUsername = username;
     const messageList = document.getElementById("messageList");
     const prevScrollHeight = messageBoxContent.scrollHeight;
@@ -202,10 +197,6 @@ export async function loadOlderMessages() {
             isEndOfMessages = true;
             return;
         }
-
-        // Reverse the new messages to maintain chronological order
-        // const reversedMessages = messages.reverse();
-
 
         messages.forEach((msg) => {
             const messageItem = createMessageElement(
@@ -222,8 +213,6 @@ export async function loadOlderMessages() {
         messageBoxContent.scrollTop = messageBoxContent.scrollHeight - prevScrollHeight;
     } catch (error) {
         console.error("Error loading older messages:", error);
-    } finally {
-        isLoadingMessages = false;
     }
 }
 
