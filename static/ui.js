@@ -1,6 +1,6 @@
-import { handleCreateComment} from './comments.js'
-import { handleCreatePost, LoadPosts, handleScroll} from './posts.js'
-import {handleLogin, handleRegister, logout} from './auth.js'
+import { handleCreateComment } from './comments.js'
+import { handleCreatePost, LoadPosts, handleScroll } from './posts.js'
+import { handleLogin, handleRegister, logout } from './auth.js'
 import { sendPrivateMessage, setSelectedUser } from './websocket.js'
 import { updateChatUI } from './chatUi.js';
 
@@ -68,10 +68,34 @@ const sectionTemplates = {
         </div>
     `
 };
+async function eventCreate(e, type) {
+    if (type === "register") {
+        e.preventDefault();
+        await handleRegister(e);
+        return
+    } else if (type === "login") {
+        e.preventDefault();
+        await handleLogin(e);
+        return
+    } else if (type === "comment") {
+        e.preventDefault();
+        await handleCreateComment(e);
+        return
+    } else if (type === "post") {
+        e.preventDefault();
+        await handleCreatePost(e);
+        return
+    }
+}
+
+const registerHandler = (e) => eventCreate(e, "register");
+const loginHandler = (e) => eventCreate(e, "login");
+const postHandler = (e) => eventCreate(e, "post");
+const commentHandler = (e) => eventCreate(e, "comment");
 
 export async function ShowSection(sectionId) {
     const dynamicContent = document.getElementById("dynamicContent");
-    document.getElementById("message").innerHTML = ''
+    document.getElementById("message").innerHTML = '';
     dynamicContent.innerHTML = sectionTemplates[sectionId] || "<p>Section not found.</p>";
 
     const navElements = {
@@ -81,21 +105,23 @@ export async function ShowSection(sectionId) {
         navRegister: document.getElementById("navRegister")
     };
 
-    navElements.navLogin?.addEventListener("click", () => ShowSection("login"))
-    navElements.navRegister?.addEventListener("click", () => ShowSection("register"))
+    navElements.navLogin?.addEventListener("click", () => ShowSection("login"));
+    navElements.navRegister?.addEventListener("click", () => ShowSection("register"));
 
     if (sectionId === "login" || sectionId === "register") {
         navElements.navBack.style.display = "none";
         navElements.navLogout.style.display = "none";
         navElements.navLogin.style.display = "block";
         navElements.navRegister.style.display = "block";
-        window.removeEventListener('scroll', handleScroll)
+        window.removeEventListener('scroll', handleScroll);
         document.getElementById("navBack")?.removeEventListener("click", LoadPosts);
-        document.getElementById("navLogout")?.removeEventListener("click",logout);
+        document.getElementById("navLogout")?.removeEventListener("click", logout);
     } else if (sectionId === "posts" || sectionId === "comments") {
         window.addEventListener('scroll', handleScroll);
+        document.getElementById("navBack")?.removeEventListener("click", LoadPosts);
         document.getElementById("navBack")?.addEventListener("click", LoadPosts);
-        document.getElementById("navLogout")?.addEventListener("click",logout);
+        document.getElementById("navLogout")?.removeEventListener("click", logout);
+        document.getElementById("navLogout")?.addEventListener("click", logout);
         navElements.navBack.style.display = "block";
         navElements.navLogout.style.display = "block";
         navElements.navLogin.style.display = "none";
@@ -105,34 +131,26 @@ export async function ShowSection(sectionId) {
     const eventSetup = {
         register: () => {
             const form = document.getElementById("registerForm");
-            form?.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                await handleRegister(e);
-            });
+            form?.removeEventListener("submit", registerHandler);  
+            form?.addEventListener("submit", registerHandler);  
         },
         login: () => {
             const form = document.getElementById("loginForm");
-            form?.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                await handleLogin(e);
-            });
+            form?.removeEventListener("submit", loginHandler);
+            form?.addEventListener("submit", loginHandler);
         },
         posts: () => {
             const createPostForm = document.getElementById("createPostForm");
             const sendMessageBtn = document.getElementById("sendMessageButton");
-
-            createPostForm?.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                await handleCreatePost(e);
-            });
+            createPostForm?.removeEventListener("submit", postHandler);
+            createPostForm?.addEventListener("submit", postHandler);
+            sendMessageBtn?.removeEventListener("click", sendPrivateMessage);
             sendMessageBtn?.addEventListener("click", sendPrivateMessage);
         },
         comments: () => {
             const form = document.getElementById("createCommentForm");
-            form?.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                await handleCreateComment(e);
-            });
+            form?.removeEventListener("submit", commentHandler);
+            form?.addEventListener("submit", commentHandler);
         }
     };
 
@@ -174,7 +192,7 @@ export function createChatUI() {
 
     document.body.appendChild(userListContainer);
     document.body.appendChild(messageBox);
-    
+
     document.getElementById("toggleUserList")?.addEventListener("click", () => {
         toggleElement("userListContainer", "toggleUserList");
     });

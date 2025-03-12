@@ -102,7 +102,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     `, user.Nickname, user.Email, user.Password, user.Age, user.Gender, user.FirstName, user.LastName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Internall server error"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Info already taken/server Error"})
 		return
 	}
 

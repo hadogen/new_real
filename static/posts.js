@@ -4,6 +4,7 @@ import {logout} from './auth.js'
 
 let offset = 0;
 let hasMore = true;
+let postsArray = [];
 
 
 export async function handleCreatePost() {
@@ -21,7 +22,7 @@ export async function handleCreatePost() {
 
         if (!response.ok) {
             if(response.status===401){
-                logout();
+                await logout();
                 throw new Error("not auth")
             }
             throw new Error("Failed to create post");
@@ -32,7 +33,6 @@ export async function handleCreatePost() {
         await LoadPosts(); 
     } catch (error) {
         document.getElementById("message").textContent = error.message;
-        console.log("logged out handleCreatePost");
     }
 }
 
@@ -43,58 +43,60 @@ export async function LoadPosts(isInitial = true) {
             await ShowSection("posts");
             offset = 0;
             hasMore = true;
-            const postFeed = document.getElementById("postFeed");
-            postFeed.innerHTML = "";
+            postsArray = []; 
         }
 
         if (!hasMore) return;
 
-
         const response = await fetch(`/posts?offset=${offset}` , {
             method: "GET",
-        }
-        );
+        });
 
         const posts = await response.json();
         if (!response.ok) {
             if (response.status===401){
-                logout();
+                await logout();
                 throw new Error("Not auth");
             }
             throw new Error(response.error);
         }
 
-        const postFeed = document.getElementById("postFeed");
+        postsArray = [...postsArray, ...posts];
 
-        if (Array.isArray(posts)) {
-            if (posts.length < 10) {
-                hasMore = false;
-            }
+        renderPosts();
 
-            posts.forEach(post => {
-                const postElement = document.createElement("div");
-                postElement.classList.add("post");
-                postElement.innerHTML = `
-                   <h1 id="post-cat">${post.category}</h1>
-                    <h2>${post.title}</h2>
-                 
-
-                    <p>${post.content}</p>
-                    <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
-                    <button class="show-comments-btn" data-post-id="${post.id}">View Comments</button>
-                `;
-
-                postFeed.appendChild(postElement);
-            });
-            document.querySelectorAll(".show-comments-btn").forEach(button => {
-                button?.addEventListener("click", () => ShowComments(button.dataset.postId));
-            });
-            offset += posts.length;
+        if (posts.length < 10) {
+            hasMore = false;
         }
+
+        offset += posts.length;
     } catch (error) {
         const messageElement = document.getElementById("message");
         messageElement.textContent = error.message;
     } 
+}
+
+function renderPosts() {
+    const postFeed = document.getElementById("postFeed");
+    postFeed.innerHTML = "";
+
+    postsArray.forEach(post => {
+        const postElement = document.createElement("div");
+        postElement.classList.add("post");
+        postElement.innerHTML = `
+           <h1 id="post-cat">${post.category}</h1>
+            <h2>${post.title}</h2>
+            <p>${post.content}</p>
+            <small>Posted by ${post.username} on ${new Date(post.created_at).toLocaleString()}</small>
+            <button class="show-comments-btn" data-post-id="${post.id}">View Comments</button>
+        `;
+
+        postFeed.appendChild(postElement);
+    });
+
+    document.querySelectorAll(".show-comments-btn").forEach(button => {
+        button?.addEventListener("click", () => ShowComments(button.dataset.postId));
+    });
 }
 
 

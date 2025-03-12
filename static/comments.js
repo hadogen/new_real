@@ -69,6 +69,6 @@ export async function LoadComments(postId) {
         }
         document.getElementById("message").textContent = "comments loaded"
     } catch (error) {
-        // document.getElementById("message").textContent = error.message + "in load comments!!!!!!!!!!";
+        document.getElementById("message").textContent = error.message + "in load comments!!!!!!!!!!";
     }
 }
